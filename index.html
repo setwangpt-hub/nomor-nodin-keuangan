@@ -200,7 +200,7 @@ tr.batal td:first-child,tr.batal td:last-child{opacity:1}
           <div class="row" id="mode-w" hidden><span class="lbl">Moda transportasi</span>
             <div class="seg" role="group" aria-label="Moda transportasi"><button type="button" id="m-udara" aria-pressed="true">Udara</button><button type="button" id="m-darat" aria-pressed="false">Darat</button></div>
             <div class="seg" role="group" aria-label="Jenis transportasi darat" id="darat-w" hidden><button type="button" id="d-dinas" aria-pressed="true">Kendaraan dinas</button><button type="button" id="d-umum" aria-pressed="false">Kereta / bus</button></div></div>
-          <div class="tbox" id="peg-w" hidden><table style="min-width:560px"><thead><tr><th>Pelaksana</th><th>Golongan</th><th title="A = Eselon III / Gol. IV; B = Gol. III ke bawah">Kelas hotel</th><th>Gender</th><th>Kamar</th></tr></thead><tbody id="peg-rows"></tbody></table></div>
+          <div class="tbox" id="peg-w" hidden><table style="min-width:560px"><thead><tr><th>Pelaksana</th><th title="A = Eselon III / Gol. IV; B = Gol. III ke bawah">Kelas hotel</th><th>Gender</th><th>Kamar</th></tr></thead><tbody id="peg-rows"></tbody></table></div>
           <small class="lead" id="peg-k" hidden></small>
           <div class="mini">
             <div class="f man-only"><label for="n-org">Jumlah orang</label><input type="text" id="n-org" class="num" inputmode="numeric" value="3"><small>Terisi dari daftar pelaksana</small></div>
@@ -409,9 +409,10 @@ const PROV=[['DKI Jakarta',530000,992000,730000,256000,'Jakarta',2674000],['Jawa
 const RT={uhLK:300000,uhDK:160000,h4:1153000,h3:814000,bbm:15950,kmpl:8,taksiJatim:233000};
 // Perjalanan darat Jawa–Bali (perkiraan awal, bisa diubah): [jarak km sekali jalan dari Surabaya, tol + penyeberangan sekali jalan per kendaraan, tiket kereta/bus PP per orang]
 const DARAT={'DKI Jakarta':[780,1050000,1300000],'Jawa Barat':[700,950000,1200000],'Jawa Tengah':[350,420000,600000],'D.I. Yogyakarta':[330,250000,600000],'Banten':[860,1150000,1500000],'Bali':[420,300000,700000]};
-// Pelaksana yang pernah tercatat di register nodin + Ali Kuncoro: [nama, golongan/ruang, gender L/P, eselon].
+// Pelaksana yang pernah tercatat di register nodin + Ali Kuncoro: [nama, kelas hotel A/B, gender L/P].
+// Kelas A = Eselon III ke atas / Gol. IV; selain itu B. Golongan tidak disimpan di halaman.
 // Nama, gender, eselon: export SIMPEG 27-10-2026; golongan: DATA PEGAWAI per Juli 2025 (export terbaru tidak memuat golongan). Nama lain dianggap Gol. II.
-const PEG=[["MOH. ALI KUNCORO","IV/c","L","II.a"],["ADE TAUFAN ARYANTO, S.AP","","L",""],["AGUNG TRI HIAD SUDJATMIKO, SE, Ak","III/d","L",""],["ANTON WIBOWO","","L",""],["DESI ANANTARI, S.Ak.","","P",""],["DEWA AYU KARINA ASOKAWATI, SE, MM","III/d","P",""],["DONI SETIAWAN, SE","","L",""],["DYAH WALOEJANINGSIH, S.E.","III/d","P",""],["EDY WALUYO, S.AP.","","L",""],["ETHICA WERDHI SESANTI, SE, M.Si","III/d","P",""],["ETIK KHUSUMANINGTIYAS, S.Ak.","II/c","P",""],["FITRA RANI KLIDA AFIANI, S.Kom.","III/b","P",""],["GALANG ADE RAMBAWANA, S.M.","","L",""],["HASAN, S.Sos","III/a","L",""],["HESTI PUNGKI HAWANIA, S.Pd.","","P",""],["MOH FADLY FIRDAUS","","L",""],["NOVIE WARDINI, SE","III/d","P",""],["NURUL HIDAYAH, S.Sos, M.Si","IV/a","P",""],["RENI MAHARANI, S.A.","III/b","P",""],["RIZKI LAYU FARITA, S.E","III/a","P",""],["SARNA, SE, M.Si","III/d","L",""],["SITI ROBI'AH AL-ADAWIYAH JAUHARI, A.Md.Ak","II/c","P",""],["SRI NURWIDAYATI, SH, MH","IV/b","P","III.a"],["SUYITNO","II/b","L",""],["TEGUH INDRATNO, S.AP","IX","L",""],["TRIANA ISWAHJUNI, SE","III/d","P",""],["VENTI OCTARITA, SP, MM","IV/a","P",""],["WEMPY HERU KURNIAWAN, SE","","L",""],["WIJAYANTI, SE","III/d","P",""],["YUSTUS VIDHEKA SUKA WIJAYA, S.Ak.","II/c","P",""]];
+const PEG=[["MOH. ALI KUNCORO","A","L"],["ADE TAUFAN ARYANTO, S.AP","B","L"],["AGUNG TRI HIAD SUDJATMIKO, SE, Ak","B","L"],["ANTON WIBOWO","B","L"],["DESI ANANTARI, S.Ak.","B","P"],["DEWA AYU KARINA ASOKAWATI, SE, MM","B","P"],["DONI SETIAWAN, SE","B","L"],["DYAH WALOEJANINGSIH, S.E.","B","P"],["EDY WALUYO, S.AP.","B","L"],["ETHICA WERDHI SESANTI, SE, M.Si","B","P"],["ETIK KHUSUMANINGTIYAS, S.Ak.","B","P"],["FITRA RANI KLIDA AFIANI, S.Kom.","B","P"],["GALANG ADE RAMBAWANA, S.M.","B","L"],["HASAN, S.Sos","B","L"],["HESTI PUNGKI HAWANIA, S.Pd.","B","P"],["MOH FADLY FIRDAUS","B","L"],["NOVIE WARDINI, SE","B","P"],["NURUL HIDAYAH, S.Sos, M.Si","A","P"],["RENI MAHARANI, S.A.","B","P"],["RIZKI LAYU FARITA, S.E","B","P"],["SARNA, SE, M.Si","B","L"],["SITI ROBI'AH AL-ADAWIYAH JAUHARI, A.Md.Ak","B","P"],["SRI NURWIDAYATI, SH, MH","A","P"],["SUYITNO","B","L"],["TEGUH INDRATNO, S.AP","B","L"],["TRIANA ISWAHJUNI, SE","B","P"],["VENTI OCTARITA, SP, MM","A","P"],["WEMPY HERU KURNIAWAN, SE","B","L"],["WIJAYANTI, SE","B","P"],["YUSTUS VIDHEKA SUKA WIJAYA, S.Ak.","B","P"]];
 const GELAR=new Set('SH MH SE AK MSI SIP SSOS SKOM SPD SM SA AMD AMDAK MM SP ST MT SSTP STP DRS DRA IR H HJ SAP SS SPSI SKM MPD MKN SAB AP MAP MAK SKED MKES SPSI SH'.split(' '));
 const pegKey=n=>(String(n).toUpperCase().split(',')[0].replace(/\./g,' . ').match(/[A-Z']+/g)||[]).filter(w=>w.length>1&&!GELAR.has(w)).join(' ');
 const PEGK=new Map();PEG.forEach(p=>{const k=pegKey(p[0]);if(!PEGK.has(k))PEGK.set(k,p);});
@@ -546,13 +547,13 @@ function estimate(){
     let N,rooms;const auto=S.pel.length>0;
     document.querySelectorAll('.man-only').forEach(e=>e.hidden=auto);$('peg-w').hidden=!auto;$('peg-k').hidden=!auto;
     if(auto){
-      const ps=S.pel.map(n=>{const f=pegFind(n),o=S.pov[n]||{};const kelas=o.k||golKelas(f?f[1]:'',f?f[3]:'');return {n,f,gol:f&&f[1]?f[1]:'',kelas,sx:o.sx||(f?f[2]:''),solo:SOLO(n)};});
+      const ps=S.pel.map(n=>{const f=pegFind(n),o=S.pov[n]||{};const kelas=o.k||(f?f[1]:'B');return {n,f,kelas,sx:o.sx||(f?f[2]:''),solo:SOLO(n)};});
       N=ps.length;rooms=[];
       ps.filter(p=>p.solo).forEach(p=>rooms.push([p]));
       ['L','P',''].forEach(g=>{const q=ps.filter(p=>!p.solo&&p.sx===g).sort((a,b)=>a.kelas.localeCompare(b.kelas));
         if(!g){q.forEach(p=>rooms.push([p]));return;}for(let i=0;i<q.length;i+=2)rooms.push(q.slice(i,i+2));});
       rooms.forEach((r,i)=>r.forEach(p=>p.room=i+1));
-      $('peg-rows').innerHTML=ps.map((p,i)=>`<tr><td>${esc(p.n)}${p.f?'':'<span class="m" style="display:block;color:var(--warn);font-size:12px">Tidak ada di data pegawai · dianggap Gol. II</span>'}</td><td class="num">${p.gol?esc(p.gol):(p.f?'Non-ASN · II (asumsi)':'II (asumsi)')}${p.f&&p.f[3]?`<span style="display:block;font-size:11.5px;color:var(--muted)">Eselon ${esc(p.f[3])}</span>`:''}</td>
+      $('peg-rows').innerHTML=ps.map((p,i)=>`<tr><td>${esc(p.n)}${p.f?'':'<span class="m" style="display:block;color:var(--warn);font-size:12px">Tidak ada di data pegawai · dihitung kelas B</span>'}</td>
         <td><select data-pk="${esc(p.n)}"><option value="A" ${p.kelas==='A'?'selected':''}>Kelas A</option><option value="B" ${p.kelas==='B'?'selected':''}>Kelas B</option></select></td>
         <td><select data-px="${esc(p.n)}"><option value="" ${!p.sx?'selected':''}>?</option><option value="L" ${p.sx==='L'?'selected':''}>L</option><option value="P" ${p.sx==='P'?'selected':''}>P</option></select></td>
         <td class="num">${dk?'–':`Kamar ${p.room}${p.solo?' · sendiri':''}`}</td></tr>`).join('');
