@@ -113,7 +113,7 @@ td input.n{width:72px;text-align:right}
 .arsip td:first-child{white-space:normal;max-width:250px}
 .arsip td .u{display:block;max-width:46ch}
 .arsip td .m{display:block;color:var(--muted);font-size:12px}
-.arsip td.st{min-width:170px}
+.arsip td.st{min-width:150px}
 .arsip td.st .mono{word-break:break-all}
 tr.batal td{opacity:.55}
 tr.batal td:first-child,tr.batal td:last-child{opacity:1}
@@ -255,8 +255,8 @@ tr.batal td:first-child,tr.batal td:last-child{opacity:1}
       <select id="fi" aria-label="Indeks"></select>
       <select id="fs" aria-label="Status"><option value="">Semua status</option><option value="S">Dengan SPJ</option><option value="T">Tanpa SPJ</option><option value="paid">Sudah terbayar</option><option value="unpaid">Belum terbayar</option><option value="sis">Nomor sisipan</option><option value="batal">Batal / kosong</option><option value="baru">Dientri di halaman ini</option></select>
     </div>
-    <div class="tbox"><table class="arsip" style="min-width:1120px">
-      <thead><tr><th>Nomor</th><th>Tgl nodin</th><th>Uraian</th><th>Ditujukan</th><th>Sub kegiatan / rekening</th><th class="r">Nilai SPJ</th><th>Status SPJ</th><th></th></tr></thead>
+    <div class="tbox"><table class="arsip" style="min-width:1160px">
+      <thead><tr><th>Nomor</th><th>Tgl nodin</th><th>Uraian</th><th>Ditujukan</th><th>Sub kegiatan / rekening</th><th class="r" style="white-space:normal;min-width:96px">Nilai Estimasi SPJ</th><th class="r" style="white-space:normal;min-width:96px">Realisasi SPJ di SIPD</th><th>Status SPJ</th><th></th></tr></thead>
       <tbody id="ar-rows"></tbody>
     </table></div>
     <div class="row"><button class="btn sm ghost" id="ar-more" hidden>Tampilkan lebih banyak</button><button class="btn sm ghost" id="ar-copy">Salin tabel (tempel ke Excel)</button></div>
@@ -569,8 +569,9 @@ function renderArsip(){
     <td><span class="u">${esc(e.uraian)}</span>${e.pelaksana?`<span class="m">${esc(e.pelaksana)}${e.lokasi?' · '+esc(e.lokasi):''}${e.mulai?' · '+fdate(e.mulai)+(e.akhir&&e.akhir!==e.mulai?' s.d. '+fdate(e.akhir):''):''}</span>`:''}</td>
     <td>${esc(e.kepada)}</td><td>${e.jenis==='S'?`${sk?esc(sk[0]+' '+sk[1]):esc(e.subkeg)}<span class="m">${esc(e.rek)}</span>`:'<span class="m">Tanpa SPJ</span>'}</td>
     <td class="r num">${e.nilai?rp(e.nilai):'–'}</td>
+    <td class="r num">${PAID[e.key]?rp(PAID[e.key].nilai):'–'}</td>
     <td class="st">${spjCell(e)}</td>
-    <td>${canEdit()?(e.status==='batal'?'':`<button class="btn sm danger" data-bt="${esc(e.key)}">Batalkan</button>`):''}</td></tr>`;}).join('')||'<tr><td colspan="8" class="lead">Tidak ada nomor yang cocok.</td></tr>';
+    <td>${canEdit()?(e.status==='batal'?'':`<button class="btn sm danger" data-bt="${esc(e.key)}">Batalkan</button>`):''}</td></tr>`;}).join('')||'<tr><td colspan="9" class="lead">Tidak ada nomor yang cocok.</td></tr>';
   $('ar-more').hidden=F.length<=arLimit;
 }
 $('ar-rows').addEventListener('click',async e=>{const k=e.target.dataset.bt;if(!k)return;
@@ -580,7 +581,7 @@ $('ar-rows').addEventListener('click',async e=>{const k=e.target.dataset.bt;if(!
   catch(err){toast('Gagal membatalkan ('+(err&&err.code||'galat')+')');}});
 ['q','fm','fi','fs'].forEach(id=>$(id).addEventListener('input',()=>renderArsip()));
 $('ar-more').onclick=()=>{arLimit+=120;renderArsip();};
-$('ar-copy').onclick=()=>{const F=filtered();const t=['Nomor\tTanggal nodin\tUraian\tDitujukan\tJenis\tSub kegiatan\tRekening\tNilai\tPelaksana\tTujuan\tStatus\tStatus SPJ\tDokumen realisasi\tTgl realisasi\tNilai realisasi'].concat(F.map(e=>[e.no,e.tgl,e.uraian,e.kepada,e.jenis==='S'?'Dengan SPJ':'Tanpa SPJ',e.subkeg,e.rek,e.nilai||'',e.pelaksana,e.lokasi,e.status,PAID[e.key]?'Sudah terbayar':(e.jenis==='S'?'Belum terbayar':''),PAID[e.key]?.doc||'',PAID[e.key]?.tgl||'',PAID[e.key]?.nilai||''].map(v=>String(v??'').replace(/\t|\n/g,' ')).join('\t'))).join('\n');copy(t);};
+$('ar-copy').onclick=()=>{const F=filtered();const t=['Nomor\tTanggal nodin\tUraian\tDitujukan\tJenis\tSub kegiatan\tRekening\tNilai Estimasi SPJ\tPelaksana\tTujuan\tStatus\tStatus SPJ\tDokumen realisasi\tTgl realisasi\tRealisasi SPJ di SIPD'].concat(F.map(e=>[e.no,e.tgl,e.uraian,e.kepada,e.jenis==='S'?'Dengan SPJ':'Tanpa SPJ',e.subkeg,e.rek,e.nilai||'',e.pelaksana,e.lokasi,e.status,PAID[e.key]?'Sudah terbayar':(e.jenis==='S'?'Belum terbayar':''),PAID[e.key]?.doc||'',PAID[e.key]?.tgl||'',PAID[e.key]?.nilai||''].map(v=>String(v??'').replace(/\t|\n/g,' ')).join('\t'))).join('\n');copy(t);};
 
 /* ---------- Rekap ---------- */
 function renderRekap(){
@@ -672,7 +673,7 @@ function spjCell(e){
   if(e.jenis!=='S'||e.status==='batal')return '<span class="m">–</span>';
   const p=PAID[e.key];
   if(!p)return '<label class="chk"><input type="checkbox" disabled aria-label="Belum terbayar"><span class="m" style="margin:0">Belum terbayar</span></label>';
-  return `<label class="chk"><input type="checkbox" checked disabled aria-label="Sudah terbayar"><span class="pill paid">Sudah terbayar</span></label><span class="m" title="${esc(p.doc)}">${esc(p.jenis)} ${fdate(p.tgl)} · ${rp(p.nilai)}</span>`;
+  return `<label class="chk"><input type="checkbox" checked disabled aria-label="Sudah terbayar"><span class="pill paid">Sudah terbayar</span></label><span class="m" title="${esc(p.doc)}">${esc(p.jenis)} ${fdate(p.tgl)}</span>`;
 }
 const BLNF=['januari','februari','maret','april','mei','juni','juli','agustus','september','oktober','november','desember'];
 function rlDate(v){
