@@ -79,6 +79,10 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 .pill.kos{background:var(--ok-soft);color:var(--ok)}
 .pill.bt{background:var(--stamp-soft);color:var(--stamp)}
 .pill.new{background:var(--accent);color:var(--on-accent)}
+.kd-tot td{font-weight:700;background:var(--accent-soft)}
+.kd-star{color:var(--warn);font-weight:700}
+#v-kendali td .m{display:block;color:var(--muted);font-size:12px;font-weight:400}
+#v-kendali td .m.kd-star{color:var(--warn);font-weight:700}
 .pill.paid{background:var(--ok-soft);color:var(--ok)}
 .chk{display:inline-flex;gap:6px;align-items:center;white-space:nowrap}
 .chk input{width:16px;height:16px;margin:0;accent-color:var(--ok)}
@@ -144,7 +148,7 @@ tr.batal td:first-child,tr.batal td:last-child{opacity:1}
 <div class="band"><div class="in">
   <div class="eyebrow">Bagian Program dan Keuangan · Sekretariat DPRD Provinsi Jawa Timur</div>
   <h1>Nomor Nodin Keuangan</h1>
-  <nav class="tabs" aria-label="Halaman"><a href="#entri" id="tab-entri">Entri nodin</a><a href="#arsip" id="tab-arsip">Arsip 2026</a><a href="#realisasi" id="tab-realisasi">Realisasi SPJ</a><a href="#rekap" id="tab-rekap">Rekap</a></nav>
+  <nav class="tabs" aria-label="Halaman"><a href="#entri" id="tab-entri">Entri nodin</a><a href="#arsip" id="tab-arsip">Arsip 2026</a><a href="#realisasi" id="tab-realisasi">Realisasi SPJ</a><a href="#kendali" id="tab-kendali">Kendali PPTK</a><a href="#rekap" id="tab-rekap">Rekap</a></nav>
 </div></div>
 
 <!-- ========== ENTRI ========== -->
@@ -291,6 +295,21 @@ tr.batal td:first-child,tr.batal td:last-child{opacity:1}
     <p class="lead">File SIPD tidak mencantumkan nomor nodin, jadi pencocokan dilakukan otomatis: sub kegiatan dan rekening harus sama, tanggal dokumen realisasi paling lama 150 hari setelah tanggal nodin, lalu dinilai dari tujuan, tanggal perjalanan, nama pelaksana, kata dalam uraian, dan nilai. Nodin hanya ditandai bila kecocokannya kuat; satu baris realisasi dipakai untuk satu nodin.</p>
     <p class="note">Data realisasi Januari s.d. Oktober 2026 sudah tertanam di halaman ini sehingga terlihat oleh semua yang membuka link. File yang Anda unggah di sini tersimpan di browser Anda sendiri; agar ikut terlihat semua orang, kirimkan file tersebut ke pengelola untuk ditanamkan.</p>
   </div>
+</div>
+
+<!-- ========== KENDALI PPTK ========== -->
+<div class="wrap" id="v-kendali" hidden>
+  <div class="panel">
+    <div class="row" style="justify-content:space-between"><h2>Kendali PPTK · Sarna, SE., M.Si</h2><span class="lead">Saldo estimasi sisa per sub kegiatan dan kode rekening · realisasi s.d. Oktober 2026</span></div>
+    <p class="lead"><b>Sisa sebelum</b> = Pagu − Realisasi s.d. Oktober. <b>Sisa sesudah</b> = Sisa sebelum − nodin yang belum di-SPJ-kan.</p>
+  </div>
+  <div class="tiles">
+    <div class="tile"><span>Pagu</span><b id="kd-pagu">–</b><i id="kd-pagu-k"></i></div>
+    <div class="tile"><span>Realisasi s.d. Oktober</span><b id="kd-real">–</b><i id="kd-real-k"></i></div>
+    <div class="tile"><span>Belum di-SPJ-kan</span><b id="kd-ns">–</b><i>Nodin yang sudah terbit</i></div>
+    <div class="tile"><span>Saldo estimasi sisa</span><b id="kd-sisa">–</b><i id="kd-sisa-k"></i></div>
+  </div>
+  <div id="kd-subs" style="display:grid;gap:20px"></div>
 </div>
 
 <!-- ========== REKAP ========== -->
@@ -753,13 +772,36 @@ function renderRealisasi(){
   $('rl-rows').innerHTML=S.map(e=>{const p=PAID[e.key];return `<tr><td><span class="mono">${esc(e.no)}</span><span class="m">${fdate(e.tgl)}</span></td><td><span class="u">${esc(e.uraian)}</span>${e.pelaksana?`<span class="m">${esc(e.pelaksana)}${e.lokasi?' · '+esc(e.lokasi):''}</span>`:''}</td><td class="r num">${e.nilai?rp(e.nilai):'–'}</td><td><span class="mono" style="font-size:11.5px">${esc(p.doc)}</span><span class="m">${esc(p.jenis)} · ${fdate(p.tgl)}${p.sp2d?' · SP2D '+fdate(p.tsp2d):''}</span></td><td class="r num">${rp(p.nilai)}</td><td><span class="m" style="margin:0">${esc(p.alasan)}</span></td></tr>`;}).join('')||'<tr><td colspan="6" class="lead">Belum ada nodin yang cocok dengan data realisasi.</td></tr>';
 }
 
+/* ---------- Kendali PPTK ---------- */
+// [kode sub kegiatan, kode tampil, nama, [[kode rekening, uraian, pagu, realisasi s.d. Okt, belum SPJ, (opsional) angka bertanda *]]]
+const KENDALI=[["402011010001","4.02.01.1.01.0001","Penyusunan Dokumen Perencanaan Perangkat Daerah",[["5.1.02.01.001.00024","ATK",70100000,930000,0],["5.1.02.01.001.00025","Kertas dan Cover",54913830,3557772,0],["5.1.02.01.001.00035","Suvenir/Cendera Mata",146810000,144777300,0],["5.1.02.01.001.00052","Mamin Rapat",77998000,24111000,0],["5.1.02.02.001.00003","Honorarium Narasumber/Panitia",116000000,90500000,0],["5.1.02.02.001.00029","Jasa Tenaga Ahli",206660000,57300000,0],["5.1.02.02.001.00063","Internet/TV Berlangganan",20214000,0,0],["5.1.02.02.012.00001","Kursus Singkat/Pelatihan",277500000,270000000,0],["5.1.02.02.015.00002","Sewa Lisensi dan Franchise",44875080,44733000,0],["5.1.02.03.006.00005","Pemeliharaan Software",150000000,0,0],["5.1.02.04.001.00001","Perjalanan Dinas Biasa",495957000,352375461,24094000],["5.1.02.04.001.00003","Perjalanan Dinas Dalam Kota",640000,200000,0],["5.1.02.04.001.00005","Paket Meeting Luar Kota",344952000,330429085,0]]],["402011020003","4.02.01.1.02.0003","Pelaksanaan Penatausahaan dan Pengujian/Verifikasi Keuangan SKPD",[["5.1.02.01.001.00024","ATK",2100000,0,0],["5.1.02.01.001.00025","Kertas dan Cover",92492000,60040899,0],["5.1.02.01.001.00027","Benda Pos",30000000,8300000,0],["5.1.02.01.001.00035","Suvenir/Cendera Mata",108500000,0,0],["5.1.02.01.001.00052","Mamin Rapat",79200000,36660000,0],["5.1.02.02.001.00003","Honorarium Narasumber/Panitia",109200000,31900000,0],["5.1.02.02.001.00016","Jasa Tenaga Penanganan Prasarana dan Sarana Umum",55120000,13900000,0],["5.1.02.03.006.00005","Pemeliharaan Software",600000000,74758500,0],["5.1.02.04.001.00001","Perjalanan Dinas Biasa",752203000,500486096,19509700],["5.1.02.04.001.00005","Paket Meeting Luar Kota",416506000,0,0,115740400]]]];
+function renderKendali(){
+  const pct=(a,b)=>b?(a/b*100).toLocaleString('id-ID',{maximumFractionDigits:1})+'%':'–';
+  let P=0,R=0,N=0;
+  $('kd-subs').innerHTML=KENDALI.map(s=>{
+    let p=0,r=0,n=0,star=false;
+    const rows=s[3].map(x=>{const sb=x[2]-x[3],sa=sb-x[4];p+=x[2];r+=x[3];n+=x[4];
+      const st=x[5]?(star=true,`<span class="kd-star">(${rp(x[5])})*</span>`):'';
+      return `<tr><td class="mono">${esc(x[0])}</td><td>${esc(x[1])}</td><td class="r num">${rp(x[2])}</td><td class="r num">${rp(x[3])}<span class="m">${pct(x[3],x[2])}</span></td><td class="r num">${rp(sb)}</td><td class="r num">${x[4]?rp(x[4]):(st||'–')}</td><td class="r num">${rp(sa)}${x[5]?`<span class="m kd-star">${rp(sa-x[5])}*</span>`:''}</td></tr>`;}).join('');
+    P+=p;R+=r;N+=n;
+    return `<div class="panel"><h2><span class="mono">${esc(s[1])}</span> ${esc(s[2])}</h2>
+    <div class="tbox"><table style="min-width:900px"><thead><tr><th>Kode rekening</th><th>Uraian</th><th class="r">Pagu</th><th class="r">Realisasi s.d. Okt</th><th class="r">Sisa sebelum</th><th class="r">Belum di-SPJ-kan</th><th class="r">Sisa sesudah</th></tr></thead>
+    <tbody>${rows}<tr class="kd-tot"><td></td><td>Total</td><td class="r num">${rp(p)}</td><td class="r num">${rp(r)}<span class="m">${pct(r,p)}</span></td><td class="r num">${rp(p-r)}</td><td class="r num">${rp(n)}</td><td class="r num">${rp(p-r-n)}</td></tr></tbody></table></div>
+    ${star?'<p class="lead"><span class="kd-star">*</span> Angka dalam kurung bertanda * belum dikurangkan dari Sisa sesudah; angka di bawahnya adalah sisa bila angka tersebut ikut dikurangkan.</p>':''}</div>`;
+  }).join('');
+  $('kd-pagu').textContent=rp(P);$('kd-pagu-k').textContent=KENDALI.length+' sub kegiatan';
+  $('kd-real').textContent=rp(R);$('kd-real-k').textContent=pct(R,P)+' dari pagu';
+  $('kd-ns').textContent=rp(N);
+  $('kd-sisa').textContent=rp(P-R-N);$('kd-sisa-k').textContent=pct(P-R-N,P)+' dari pagu';
+}
+
 /* ---------- Navigasi ---------- */
-function route(){const h=(location.hash||'#entri').slice(1);const v=['entri','arsip','realisasi','rekap'].includes(h)?h:'entri';
-  ['entri','arsip','realisasi','rekap'].forEach(x=>{$('v-'+x).hidden=x!==v;$('tab-'+x).setAttribute('aria-current',x===v?'page':'false');});}
+function route(){const h=(location.hash||'#entri').slice(1);const v=['entri','arsip','realisasi','kendali','rekap'].includes(h)?h:'entri';
+  ['entri','arsip','realisasi','kendali','rekap'].forEach(x=>{$('v-'+x).hidden=x!==v;$('tab-'+x).setAttribute('aria-current',x===v?'page':'false');});}
 window.addEventListener('hashchange',route);
 
 /* ---------- Mulai ---------- */
-renderHon();renderTa();renderCtk();setBel('sppd');setSpj('S');setLd(false);idxChange();renderAll();route();
+renderHon();renderTa();renderCtk();setBel('sppd');setSpj('S');setLd(false);idxChange();renderAll();renderKendali();route();
 
 /* Versi mandiri (GitHub Pages): data disimpan di browser ini (localStorage) */
 const LSK='nodin-keuangan-2026';
