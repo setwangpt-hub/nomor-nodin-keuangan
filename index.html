@@ -131,10 +131,17 @@ td input.n{width:72px;text-align:right}
 @media (max-width:720px){.filters{grid-template-columns:1fr 1fr}}
 .arsip td:first-child{white-space:normal;max-width:none;width:1%}
 .arsip td:nth-child(2) .m{white-space:normal}
-.arsip td:nth-child(5){max-width:190px}
-.arsip td .u{display:block;max-width:30ch}
+.arsip td:nth-child(5){max-width:170px}
+.arsip td:nth-child(4){max-width:115px}
+.arsip td:nth-child(3){max-width:150px}
+.arsip td .u{display:block;max-width:21ch}
+.arsip th,.arsip td{padding-left:7px;padding-right:7px}
 .arsip td .m{display:block;color:var(--muted);font-size:12px}
-.arsip td.st{min-width:150px}
+.arsip td.st{min-width:120px}
+.arsip td.npd{min-width:125px}
+.arsip td.npd .mono{display:block;margin-top:2px;font-size:12.5px;color:var(--accent);text-decoration:none;font-weight:600}
+.arsip td.npd a.mono:hover{text-decoration:underline}
+.arsip td.npd .m.tot{font-weight:700;color:var(--ink,inherit);border-top:1px solid var(--line,#ddd);margin-top:4px;padding-top:2px}
 .arsip td.st .mono{word-break:break-all}
 tr.batal td{opacity:.55}
 tr.batal td:first-child,tr.batal td:last-child{opacity:1}
@@ -284,7 +291,7 @@ tr.batal td:first-child,tr.batal td:last-child{opacity:1}
       <select id="fs" aria-label="Status"><option value="">Semua status</option><option value="S">Dengan SPJ</option><option value="T">Tanpa SPJ</option><option value="paid">Sudah terbayar</option><option value="unpaid">Belum terbayar</option><option value="sis">Nomor sisipan</option><option value="batal">Batal / kosong</option><option value="baru">Dientri di halaman ini</option></select>
     </div>
     <div class="tbox"><table class="arsip" style="min-width:1160px">
-      <thead><tr><th>Nomor</th><th>Tgl nodin</th><th>Uraian</th><th>Ditujukan</th><th>Sub kegiatan / rekening</th><th class="r" style="white-space:normal;min-width:96px">Nilai Estimasi SPJ</th><th class="r" style="white-space:normal;min-width:96px">Realisasi SPJ di SIPD</th><th>Status SPJ</th><th></th></tr></thead>
+      <thead><tr><th>Nomor</th><th>Tgl nodin</th><th>Uraian</th><th>Ditujukan</th><th>Sub kegiatan / rekening</th><th class="r" style="white-space:normal;min-width:96px">Nilai Estimasi SPJ</th><th class="r" style="white-space:normal;min-width:96px">Realisasi SPJ di SIPD</th><th>Status SPJ</th><th>Status NPD</th><th></th></tr></thead>
       <tbody id="ar-rows"></tbody>
     </table></div>
     <div class="row"><button class="btn sm ghost" id="ar-more" hidden>Tampilkan lebih banyak</button><button class="btn sm ghost" id="ar-copy">Salin tabel (tempel ke Excel)</button></div>
@@ -658,14 +665,15 @@ function renderArsip(){
   const F=filtered(),rows=F.slice(0,arLimit);
   $('ar-count').textContent=`${nf(F.length)} nomor · terbaru di atas, nomor 001 paling bawah`;
   $('ar-rows').innerHTML=rows.map(e=>{const sk=SUBKEG.find(s=>s[0]===e.subkeg);
-    return `<tr class="${e.status==='batal'?'batal':''}"><td><span class="mono">${esc(e.no)}</span><span class="m">${e.src==='db'?'<span class="pill new">baru</span> ':''}${e.sub?'<span class="pill sis">sisipan</span> ':''}${e.cara==='kosong'?'<span class="pill kos">pakai nomor kosong</span> ':''}${e.status==='batal'?'<span class="pill bt">batal · kosong</span>':''}</span></td>
+    return `<tr class="${e.status==='batal'?'batal':''}"><td><span class="mono">${esc(e.no).replace(/\/(?=\d{3}(\.\d+)?\/050)/,'/<wbr>')}</span><span class="m">${e.src==='db'?'<span class="pill new">baru</span> ':''}${e.sub?'<span class="pill sis">sisipan</span> ':''}${e.cara==='kosong'?'<span class="pill kos">pakai nomor kosong</span> ':''}${e.status==='batal'?'<span class="pill bt">batal · kosong</span>':''}</span></td>
     <td class="num" style="white-space:nowrap">${fdate(e.tgl)}<span class="m">entri ${esc(e.at||'')}</span></td>
     <td><span class="u">${esc(e.uraian)}</span>${e.pelaksana?`<span class="m">${esc(e.pelaksana)}${e.lokasi?' · '+esc(e.lokasi):''}${e.mulai?' · '+fdate(e.mulai)+(e.akhir&&e.akhir!==e.mulai?' s.d. '+fdate(e.akhir):''):''}</span>`:''}</td>
     <td>${esc(e.kepada)}</td><td>${e.jenis==='S'?`${sk?esc(sk[0]+' '+sk[1]):esc(e.subkeg)}<span class="m">${esc(e.rek)}</span>`:'<span class="m">Tanpa SPJ</span>'}</td>
     <td class="r num">${e.nilai?rp(e.nilai):'–'}</td>
     <td class="r num">${PAID[e.key]?rp(PAID[e.key].nilai):'–'}</td>
     <td class="st">${spjCell(e)}</td>
-    <td>${canEdit()?(e.status==='batal'?'':`<button class="btn sm danger" data-bt="${esc(e.key)}">Batalkan</button>`):''}</td></tr>`;}).join('')||'<tr><td colspan="9" class="lead">Tidak ada nomor yang cocok.</td></tr>';
+    <td class="npd">${npdCell(e)}</td>
+    <td>${canEdit()?(e.status==='batal'?'':`<button class="btn sm danger" data-bt="${esc(e.key)}">Batalkan</button>`):''}</td></tr>`;}).join('')||'<tr><td colspan="10" class="lead">Tidak ada nomor yang cocok.</td></tr>';
   $('ar-more').hidden=F.length<=arLimit;
 }
 $('ar-rows').addEventListener('click',async e=>{const k=e.target.dataset.bt;if(!k)return;
@@ -675,7 +683,7 @@ $('ar-rows').addEventListener('click',async e=>{const k=e.target.dataset.bt;if(!
   catch(err){toast('Gagal membatalkan ('+(err&&err.code||'galat')+')');}});
 ['q','fm','fi','fs'].forEach(id=>$(id).addEventListener('input',()=>renderArsip()));
 $('ar-more').onclick=()=>{arLimit+=120;renderArsip();};
-$('ar-copy').onclick=()=>{const F=filtered();const t=['Nomor\tTanggal nodin\tUraian\tDitujukan\tJenis\tSub kegiatan\tRekening\tNilai Estimasi SPJ\tPelaksana\tTujuan\tStatus\tStatus SPJ\tDokumen realisasi\tTgl realisasi\tRealisasi SPJ di SIPD'].concat(F.map(e=>[e.no,e.tgl,e.uraian,e.kepada,e.jenis==='S'?'Dengan SPJ':'Tanpa SPJ',e.subkeg,e.rek,e.nilai||'',e.pelaksana,e.lokasi,e.status,PAID[e.key]?'Sudah terbayar':(e.jenis==='S'?'Belum terbayar':''),PAID[e.key]?.doc||'',PAID[e.key]?.tgl||'',PAID[e.key]?.nilai||''].map(v=>String(v??'').replace(/\t|\n/g,' ')).join('\t'))).join('\n');copy(t);};
+$('ar-copy').onclick=()=>{const F=filtered();const t=['Nomor\tTanggal nodin\tUraian\tDitujukan\tJenis\tSub kegiatan\tRekening\tNilai Estimasi SPJ\tPelaksana\tTujuan\tStatus\tStatus SPJ\tDokumen realisasi\tTgl realisasi\tRealisasi SPJ di SIPD\tNomor NPD\tRealisasi NPD'].concat(F.map(e=>[e.no,e.tgl,e.uraian,e.kepada,e.jenis==='S'?'Dengan SPJ':'Tanpa SPJ',e.subkeg,e.rek,e.nilai||'',e.pelaksana,e.lokasi,e.status,PAID[e.key]?'Sudah terbayar':(e.jenis==='S'?'Belum terbayar':''),PAID[e.key]?.doc||'',PAID[e.key]?.tgl||'',PAID[e.key]?.nilai||'',(NPDMAP?.[e.key]||[]).map(n=>n.no).join(', '),(NPDMAP?.[e.key]||[]).reduce((a,n)=>a+n.nilai,0)||''].map(v=>String(v??'').replace(/\t|\n/g,' ')).join('\t'))).join('\n');copy(t);};
 
 /* ---------- Rekap ---------- */
 function renderRekap(){
@@ -909,6 +917,32 @@ db.collection('nodin').onSnapshot(snap=>{const L={};snap.docs.forEach(x=>{const 
 /* Cadangan: unduh / muat data */
 $('bk-dl').onclick=()=>{const b=new Blob([JSON.stringify(lsRead(),null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='nodin-2026-'+today()+'.json';a.click();};
 $('bk-up').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const inc=JSON.parse(await f.text());const o=lsRead();let n=0;Object.entries(inc).forEach(([k,v])=>{if(v&&v.no&&(!o[k]||(v.at||'')>=(o[k].at||''))){o[k]=v;n++;}});lsWrite(o);emit();toast(n+' nomor dimuat');}catch(err){toast('Berkas tidak bisa dibaca');}e.target.value='';};
+
+/* ---------- Status NPD: dibaca publik dari sheet NPD 2026 (sumber aplikasi Nomor Nota Pencairan Dana) ---------- */
+var NPD_CSV='https://docs.google.com/spreadsheets/d/1dLejaq2KWhWoWaoxD8OBxaYycYMOMTDe02YbomQN41U/export?format=csv&gid=662009166';
+var NPD_APP='https://setwangpt-hub.github.io/nomor-nota-pencairan-dana-keuangan/?v=3#arsip';
+var NPDMAP=null,NPDERR='',NPDAT=0;
+function csvParse(t){const R=[];let row=[],f='',q=false;for(let i=0;i<t.length;i++){const c=t[i];
+  if(q){if(c==='"'){if(t[i+1]==='"'){f+='"';i++;}else q=false;}else f+=c;}
+  else if(c==='"')q=true;else if(c===','){row.push(f);f='';}else if(c==='\n'){row.push(f);R.push(row);row=[];f='';}else if(c!=='\r')f+=c;}
+  if(f!==''||row.length){row.push(f);R.push(row);}return R;}
+// Kolom D sheet NPD berisi nomor urut nodin: "036" -> "36", sisipan "368.1" -> "368_1" (sama dengan key arsip)
+function npdKey(s){const m=String(s||'').trim().match(/^(\d{1,3})(?:\.(\d+))?$/);if(!m)return '';const q=parseInt(m[1],10);if(!q)return '';return m[2]?q+'_'+parseInt(m[2],10):String(q);}
+async function loadNPDStatus(){NPDAT=Date.now();
+  try{const r=await fetch(NPD_CSV,{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);const V=csvParse(await r.text());const M={};
+    for(let i=1;i<V.length;i++){const x=V[i]||[];if(!String(x[1]||'').trim())continue;const num=parseInt(String(x[0]||'').trim(),10);if(!(num>=1))continue;
+      const k=npdKey(x[3]);if(!k)continue;(M[k]=M[k]||[]).push({no:String(x[0]).trim(),num,nilai:pnum(String(x[21]||'').replace(/[^\d.,]/g,'')),tgl:String(x[1]||'').split(' ')[0]});}
+    Object.values(M).forEach(L=>L.sort((a,b)=>a.num-b.num));NPDMAP=M;NPDERR='';}
+  catch(e){NPDERR='Data NPD belum terbaca';if(!NPDMAP)NPDMAP={};}
+  renderArsip();}
+function npdCell(e){
+  if(NPDMAP==null)return '<span class="m">Memuat NPD…</span>';
+  const L=NPDMAP[e.key];
+  if(!L||!L.length)return `<span class="m">${NPDERR?esc(NPDERR):(e.jenis==='S'&&e.status!=='batal'?'Belum ada NPD':'–')}</span>`;
+  const tot=L.reduce((a,n)=>a+n.nilai,0);
+  return L.map(n=>`<a class="mono" href="${NPD_APP}" target="_blank" rel="noopener" title="NPD tanggal ${esc(n.tgl)}">${esc(n.no)}</a><span class="m num">${rp(n.nilai)}</span>`).join('')+(L.length>1?`<span class="m num tot">Total ${rp(tot)}</span>`:'');}
+loadNPDStatus();
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&Date.now()-NPDAT>60000)loadNPDStatus();});
 </script>
 
 </body>
