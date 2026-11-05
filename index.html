@@ -192,7 +192,7 @@ tr.batal td:first-child,tr.batal td:last-child{opacity:1}
     <form class="panel" id="frm" autocomplete="off">
       <div><h2>Data nota dinas</h2></div>
       <div class="fields">
-        <div class="f"><label for="tgl">Tanggal nodin</label><input type="date" id="tgl"><small id="tgl-k">Tanggal yang tertulis di nodin, boleh mundur</small></div>
+        <div class="f"><label for="tgl">Tanggal nodin</label><input type="date" id="tgl"><small id="tgl-k"></small></div>
         <div class="f"><label for="idx">Indeks</label><select id="idx"></select><small id="idx-k"></small></div>
         <div class="f full" id="idx-own-w" hidden><label for="idx-own">Indeks lainnya</label><input type="text" id="idx-own" placeholder="contoh 500.12.18"></div>
         <div class="f full"><label for="uraian">Uraian / perihal</label><textarea id="uraian" placeholder="Untuk SPPD: dalam rangka, nama pelaksana, tujuan, dan tanggal pelaksanaan"></textarea></div>
@@ -624,7 +624,7 @@ function preview(){
   if(!P){$('st-no').textContent='–';$('st-why').textContent='Isi tanggal nodin.';return;}
   $('st-k').innerHTML={baru:'Nomor baru',kosong:'Nomor kosong dipakai ulang',sisipan:'Nomor sisipan'}[P.cara];
   $('st-no').textContent=nomor(curIdx(),P.seq,P.sub);$('st-why').textContent=P.why;
-  $('tgl-k').textContent=T>today()?'Tanggal di depan hari ini. Pastikan sudah benar.':'Tanggal yang tertulis di nodin, boleh mundur';
+  $('tgl-k').textContent=T>today()?'Tanggal di depan hari ini. Pastikan sudah benar.':'';
 }
 
 /* ---------- Simpan ---------- */
