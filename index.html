@@ -196,7 +196,7 @@ tr.batal td:first-child,tr.batal td:last-child{opacity:1}
         <div class="f"><label for="idx">Indeks</label><select id="idx"></select><small id="idx-k"></small></div>
         <div class="f full" id="idx-own-w" hidden><label for="idx-own">Indeks lainnya</label><input type="text" id="idx-own" placeholder="contoh 500.12.18"></div>
         <div class="f full"><label for="uraian">Uraian / perihal</label><textarea id="uraian" placeholder="Untuk SPPD: dalam rangka, nama pelaksana, tujuan, dan tanggal pelaksanaan"></textarea></div>
-        <div class="f"><label for="kepada">Ditujukan kepada</label><input type="text" id="kepada" list="dl-kepada" placeholder="Sekretaris DPRD Provinsi Jawa Timur"></div>
+        <div class="f"><label for="kepada">Ditujukan kepada</label><input type="text" id="kepada" list="dl-kepada" value="Sekretaris DPRD Provinsi Jawa Timur" placeholder="Sekretaris DPRD Provinsi Jawa Timur"></div>
         <div class="f"><span class="lbl" id="l-spj">Jenis nota dinas</span><div class="seg" role="group" aria-labelledby="l-spj"><button type="button" id="spj-s" aria-pressed="true">Dengan SPJ keuangan</button><button type="button" id="spj-t" aria-pressed="false">Tanpa SPJ</button></div></div>
       </div>
 
@@ -632,7 +632,7 @@ $('frm').addEventListener('submit',async e=>{
   e.preventDefault();$('err').hidden=true;$('done').hidden=true;
   const T=$('tgl').value,ur=$('uraian').value.trim(),kp=$('kepada').value.trim(),idx=curIdx();
   const miss=[!T&&'tanggal nodin',(!idx||idx==='…')&&'indeks',!ur&&'uraian',!kp&&'tujuan nodin'].filter(Boolean);
-  if(miss.length){showErr('Lengkapi '+miss.join(', ')+'.');return;}
+  if(miss.length){showErr('Lengkapi '+miss.join(', ')+'.');const f=[!T&&'tgl',(!idx||idx==='…')&&'idx',!ur&&'uraian',!kp&&'kepada'].filter(Boolean)[0];if(f&&$(f))$(f).focus();return;}
   if(!db){showErr('Penyimpanan browser tidak tersedia.');return;}
   $('go').disabled=true;$('go').textContent='Mengambil nomor…';
   try{
@@ -659,7 +659,7 @@ $('frm').addEventListener('submit',async e=>{
   }catch(err){showErr('Nomor gagal disimpan ('+(err&&err.code||'galat')+'). '+(err&&err.code==='permission_denied'?'Akun Anda hanya bisa melihat; minta akses kontributor ke pemilik halaman.':'Coba lagi sebentar lagi.'));}
   finally{$('go').disabled=false;$('go').textContent='Ambil nomor';preview();}
 });
-function showErr(t){$('err').textContent=t;$('err').hidden=false;}
+function showErr(t){$('err').textContent=t;$('err').hidden=false;toast(t);const r=$('err').getBoundingClientRect();if(r.top<0||r.bottom>innerHeight)$('err').scrollIntoView({behavior:'smooth',block:'center'});}
 async function copy(t){try{await navigator.clipboard.writeText(t);toast('Disalin');}catch(e){toast('Salin manual: '+t.slice(0,60));}}
 
 /* ---------- Arsip ---------- */
