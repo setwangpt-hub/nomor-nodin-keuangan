@@ -217,6 +217,8 @@ tr.batal td:first-child,tr.batal td:last-child{opacity:1}
               <div class="row" style="flex-wrap:nowrap"><input type="text" id="pel-in" list="dl-pel" placeholder="Ketik nama lalu Enter"><button type="button" class="btn sm ghost" id="pel-add">Tambah</button></div>
               <div class="chips" id="pel-chips"></div></div>
           </div>
+          <div class="row" id="inap-w" hidden><span class="lbl">Penginapan</span>
+            <div class="seg" role="group" aria-label="Penginapan dalam kota"><button type="button" id="i-tidak" aria-pressed="true">Tanpa menginap</button><button type="button" id="i-ya" aria-pressed="false">Menginap</button></div></div>
           <div class="row" id="mode-w" hidden><span class="lbl">Moda transportasi</span>
             <div class="seg" role="group" aria-label="Moda transportasi"><button type="button" id="m-udara" aria-pressed="true">Udara</button><button type="button" id="m-darat" aria-pressed="false">Darat</button></div>
             <div class="seg" role="group" aria-label="Jenis transportasi darat" id="darat-w" hidden><button type="button" id="d-dinas" aria-pressed="true">Kendaraan dinas</button><button type="button" id="d-umum" aria-pressed="false">Kereta / bus</button></div></div>
@@ -446,7 +448,7 @@ const HON=[['Narasumber Menteri/pejabat setingkat',1700000,'OJ'],['Narasumber Ke
 /* ---------- State ---------- */
 let LIVE={};            // dokumen db: key -> data
 let db=null,user=null,uid='';
-const S={spj:'S',bel:'sppd',ld:false,moda:'udara',darat:'dinas',pov:{},rt:null,rtKey:'',pel:[],hon:[[4,1,2,false],[6,1,1,false]],ta:[[2,1,1]],ctk:[['Dokumen',100,10,'bw','sc']]};
+const S={spj:'S',bel:'sppd',ld:false,inap:false,moda:'udara',darat:'dinas',pov:{},rt:null,rtKey:'',pel:[],hon:[[4,1,2,false],[6,1,1,false]],ta:[[2,1,1]],ctk:[['Dokumen',100,10,'bw','sc']]};
 
 function entries(){
   const m=new Map();
@@ -492,6 +494,8 @@ function setBel(b){S.bel=b;document.querySelectorAll('[data-bel]').forEach(x=>x.
 document.querySelectorAll('[data-bel]').forEach(x=>x.onclick=()=>setBel(x.dataset.bel));
 function setSpj(v){S.spj=v;$('spj-s').setAttribute('aria-pressed',v==='S');$('spj-t').setAttribute('aria-pressed',v==='T');$('spj-box').hidden=v!=='S';$('spj-box').style.display=v==='S'?'grid':'none';$('est-panel').hidden=v!=='S';calc();}
 $('spj-s').onclick=()=>setSpj('S');$('spj-t').onclick=()=>setSpj('T');
+function setInap(v){S.inap=v;$('i-tidak').setAttribute('aria-pressed',!v);$('i-ya').setAttribute('aria-pressed',v);calc();}
+$('i-tidak').onclick=()=>setInap(false);$('i-ya').onclick=()=>setInap(true);
 function setLd(v){S.ld=v;$('dd-on').setAttribute('aria-pressed',!v);$('ld-on').setAttribute('aria-pressed',v);$('w-kota').hidden=v;$('w-prov').hidden=!v;document.querySelectorAll('.dd-only').forEach(e=>e.hidden=v);calc();}
 function setModa(m){S.moda=m;$('m-udara').setAttribute('aria-pressed',m==='udara');$('m-darat').setAttribute('aria-pressed',m==='darat');calc();}
 function setDarat(d){S.darat=d;$('d-dinas').setAttribute('aria-pressed',d==='dinas');$('d-umum').setAttribute('aria-pressed',d==='umum');calc();}
@@ -546,10 +550,10 @@ function estimate(){
   if(S.bel==='sppd'){
     const H=hari(),M=H-1;$('hari-k').textContent=`${H} hari, ${M} malam`;
     // --- tujuan & moda ---
-    let mode,label,defs,dk=false;
-    if(!S.ld){const k=KOTA[+$('kota').value];dk=k[1]<=25;mode='dd';label=k[0];
-      $('kota-k').textContent=dk?'Dalam kota: uang harian Rp160.000 (>8 jam), tanpa penginapan':`${nf(k[1])} km sekali jalan dari Surabaya`;
-      defs=[['uh','Uang harian / orang / hari',dk?RT.uhDK:RT.uhLK],...(dk?[]:[['hA','Hotel kelas A / kamar / malam',RT.h4],['hB','Hotel kelas B / kamar / malam',RT.h3]]),...(k[1]>0?[['km','Jarak sekali jalan (km)',k[1]],['kmpl','Km per liter',RT.kmpl],['bbm','Harga BBM / liter',RT.bbm],['tol','Tol sekali jalan / kendaraan',k[2]]]:[])];}
+    let mode,label,defs,dk=false,nk=false;
+    if(!S.ld){const k=KOTA[+$('kota').value];dk=k[1]<=25;nk=dk&&!S.inap;mode='dd';label=k[0];$('inap-w').hidden=!dk;
+      $('kota-k').textContent=nk?'Dalam kota tanpa menginap: uang harian Rp160.000 (>8 jam)':dk?'Dalam kota menginap: uang harian dan penginapan seperti luar kota':`${nf(k[1])} km sekali jalan dari Surabaya`;
+      defs=[['uh','Uang harian / orang / hari',nk?RT.uhDK:RT.uhLK],...(nk?[]:[['hA','Hotel kelas A / kamar / malam',RT.h4],['hB','Hotel kelas B / kamar / malam',RT.h3]]),...(k[1]>0?[['km','Jarak sekali jalan (km)',k[1]],['kmpl','Km per liter',RT.kmpl],['bbm','Harga BBM / liter',RT.bbm],['tol','Tol sekali jalan / kendaraan',k[2]]]:[])];}
     else{const p=PROV[+$('prov').value],jb=DARAT[p[0]];label=p[0];$('mode-w').hidden=!jb;
       mode=jb&&S.moda==='darat'?(S.darat==='umum'?'umum':'dinas'):'udara';$('darat-w').hidden=!(jb&&S.moda==='darat');
       $('prov-k').textContent=mode==='udara'?(p[6]?`Tiket ekonomi PP Surabaya–${p[5]} ${rp(p[6])}`:`Rute Surabaya–${p[5]} tidak tercantum di Perpres 72/2025; isi tarif tiket di bawah`):mode==='dinas'?`Kendaraan dinas Surabaya–${p[5]} ±${nf(jb[0])} km sekali jalan`:`Kereta/bus Surabaya–${p[5]}`;
@@ -557,7 +561,7 @@ function estimate(){
       if(mode==='udara')defs.push(['tiket','Tiket pesawat PP / orang',p[6]],['tx1','Taksi Surabaya sekali jalan',RT.taksiJatim],['tx2',`Taksi ${p[5]} sekali jalan`,p[4]]);
       else if(mode==='umum')defs.push(['tiket','Tiket kereta/bus PP / orang',jb[2]],['tx1','Taksi Surabaya sekali jalan',RT.taksiJatim],['tx2',`Taksi ${p[5]} sekali jalan`,p[4]]);
       else defs.push(['km','Jarak sekali jalan (km)',jb[0]],['kmpl','Km per liter',RT.kmpl],['bbm','Harga BBM / liter',RT.bbm],['tol','Tol + penyeberangan sekali jalan / kendaraan',jb[1]]);}
-    if(!S.ld)$('mode-w').hidden=true;
+    if(!S.ld)$('mode-w').hidden=true;else $('inap-w').hidden=true;
     const key=mode+'|'+label+'|'+defs.map(d=>d[0]).join(',');
     if(S.rtKey!==key){S.rtKey=key;S.rt={};S.rtDef={};defs.forEach(d=>{S.rt[d[0]]=d[2];S.rtDef[d[0]]=d[2];});
       $('rt-w').innerHTML=defs.map(d=>`<div class="f"><label for="rt-${d[0]}">${esc(d[1])}</label><input type="text" id="rt-${d[0]}" data-rt="${d[0]}" class="num" inputmode="numeric" value="${nf(d[2])}"><small>Standar ${d[0]==='km'||d[0]==='kmpl'?nf(d[2]):rp(d[2])}</small></div>`).join('');}
@@ -576,8 +580,8 @@ function estimate(){
       $('peg-rows').innerHTML=ps.map((p,i)=>`<tr><td>${esc(p.n)}${p.f?'':'<span class="m" style="display:block;color:var(--warn);font-size:12px">Tidak ada di data pegawai · dihitung kelas B</span>'}</td>
         <td><select data-pk="${esc(p.n)}"><option value="A" ${p.kelas==='A'?'selected':''}>Kelas A</option><option value="B" ${p.kelas==='B'?'selected':''}>Kelas B</option></select></td>
         <td><select data-px="${esc(p.n)}"><option value="" ${!p.sx?'selected':''}>?</option><option value="L" ${p.sx==='L'?'selected':''}>L</option><option value="P" ${p.sx==='P'?'selected':''}>P</option></select></td>
-        <td class="num">${dk?'–':`Kamar ${p.room}${p.solo?' · sendiri':''}`}</td></tr>`).join('');
-      $('peg-k').textContent=dk?'Perjalanan dalam kota tanpa penginapan.':`${rooms.length} kamar: Sri Nurwidayati dan Ali Kuncoro selalu 1 kamar 1 orang; pegawai lain 1 kamar 2 orang sesuai gender (gender "?" dihitung sendiri). Kelas A = Eselon III / Gol. IV, kelas B = Gol. III ke bawah; kamar berisi anggota kelas A memakai tarif kelas A. Kelas dan gender bisa diubah di tabel.`;
+        <td class="num">${nk?'–':`Kamar ${p.room}${p.solo?' · sendiri':''}`}</td></tr>`).join('');
+      $('peg-k').textContent=nk?'Perjalanan dalam kota tanpa penginapan.':`${rooms.length} kamar: Sri Nurwidayati dan Ali Kuncoro selalu 1 kamar 1 orang; pegawai lain 1 kamar 2 orang sesuai gender (gender "?" dihitung sendiri). Kelas A = Eselon III / Gol. IV, kelas B = Gol. III ke bawah; kamar berisi anggota kelas A memakai tarif kelas A. Kelas dan gender bisa diubah di tabel.`;
       $('n-org').value=N;
     }else{
       N=Math.max(1,Math.round(pnum($('n-org').value)));const G4=Math.min(N,Math.round(pnum($('n-g4').value))),opk=Math.max(1,Math.round(pnum($('n-opk').value)));
