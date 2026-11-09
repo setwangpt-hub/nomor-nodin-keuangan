@@ -310,9 +310,9 @@ tr.batal td:first-child,tr.batal td:last-child{opacity:1}
       <tbody id="ar-rows"></tbody>
     </table></div>
     <div class="row"><button class="btn sm ghost" id="ar-more" hidden>Tampilkan lebih banyak</button><button class="btn sm ghost" id="ar-copy">Salin tabel (tempel ke Excel)</button></div>
-    <div class="row"><button class="btn sm ghost" id="bk-dl">Unduh cadangan data (.json)</button><label class="btn sm ghost" for="bk-up" style="display:inline-block">Muat cadangan</label><input type="file" id="bk-up" accept=".json,application/json" hidden></div>
-    <p class="note">Versi ini menyimpan nomor baru di browser masing-masing. Agar nomor tidak bentrok, ambil nomor dari satu perangkat saja, atau muat cadangan terbaru sebelum mengambil nomor.</p>
-    <p class="lead">Nomor 001–368 disalin dari sheet NODIN 2026 per 3 November 2026; uraian di atas 140 karakter terpotong. Membatalkan nomor menjadikannya nomor kosong yang bisa dipakai nodin bertanggal sama.</p>
+    <div class="row"><button class="btn sm ghost" id="bk-dl">Unduh cadangan data (.json)</button><label class="btn sm ghost" for="bk-up" style="display:inline-block">Muat cadangan ke penyimpanan bersama</label><input type="file" id="bk-up" accept=".json,application/json" hidden></div>
+    <p class="note" id="ls-old" hidden></p>
+    <p class="lead">Nomor 001–368 disalin dari sheet NODIN 2026 per 3 November 2026; uraian di atas 140 karakter terpotong. Nomor baru, sisipan, nomor kosong, dan pembatalan disimpan bersama di tab APP NODIN 2026 sehingga terbaca di semua browser dan perangkat. Membatalkan nomor menjadikannya nomor kosong yang bisa dipakai nodin bertanggal sama.</p>
   </div>
 </div>
 
@@ -447,13 +447,13 @@ const HON=[['Narasumber Menteri/pejabat setingkat',1700000,'OJ'],['Narasumber Ke
 
 /* ---------- State ---------- */
 let LIVE={};            // dokumen db: key -> data
-let db=null,user=null,uid='';
+let API='',SYNC={at:0,err:'Memuat penyimpanan bersama…'};
 const S={spj:'S',bel:'sppd',ld:false,inap:false,moda:'udara',darat:'dinas',pov:{},rt:null,rtKey:'',pel:[],hon:[[4,1,2,false],[6,1,1,false]],ta:[[2,1,1]],ctk:[['Dokumen',100,10,'bw','sc']]};
 
 function entries(){
   const m=new Map();
   ARSIP.forEach(a=>m.set(String(a[0]),{key:String(a[0]),seq:a[0],sub:0,no:a[1],idx:a[2],tgl:a[3],uraian:a[4],kepada:a[5],jenis:a[6],subkeg:a[7],nilai:a[8],rek:a[9],pelaksana:a[10],mulai:a[11],akhir:a[12],lokasi:a[13],at:a[14],status:'aktif',src:'arsip'}));
-  Object.values(LIVE).forEach(d=>{if(d&&d.no)m.set(d.key,{...d,src:'db'});});
+  Object.values(LIVE).forEach(d=>{if(d&&d.no)m.set(d.key,{...m.get(d.key),...d,src:m.has(d.key)&&m.get(d.key).src==='arsip'?'arsip':'db'});});
   return [...m.values()].sort((x,y)=>x.seq-y.seq||x.sub-y.sub);
 }
 function nomor(idx,seq,sub){return `${idx}/${pad3(seq)}${sub?'.'+sub:''}/050.3/2026`;}
@@ -637,30 +637,31 @@ $('frm').addEventListener('submit',async e=>{
   const T=$('tgl').value,ur=$('uraian').value.trim(),kp=$('kepada').value.trim(),idx=curIdx();
   const miss=[!T&&'tanggal nodin',(!idx||idx==='…')&&'indeks',!ur&&'uraian',!kp&&'tujuan nodin'].filter(Boolean);
   if(miss.length){showErr('Lengkapi '+miss.join(', ')+'.');const f=[!T&&'tgl',(!idx||idx==='…')&&'idx',!ur&&'uraian',!kp&&'kepada'].filter(Boolean)[0];if(f&&$(f))$(f).focus();return;}
-  if(!db){showErr('Penyimpanan browser tidak tersedia.');return;}
+  if(!API){showErr('Alamat penyimpanan bersama (Apps Script) belum diisi.');return;}
   $('go').disabled=true;$('go').textContent='Mengambil nomor…';
   try{
-    for(let attempt=0;attempt<4;attempt++){
-      const p=plan(T,idx);const ref=db.collection('nodin').doc(p.key);
-      const l=await ref.acquire({holder:(uid||'anon')+'-'+Math.random().toString(36).slice(2,8),ttlMs:8000});
-      if(!l.acquired){await new Promise(r=>setTimeout(r,900));continue;}
-      const s=await ref.get();const cur=s.exists?s.data:null;
+    for(let attempt=0;attempt<5;attempt++){
+      await refreshData();if(SYNC.err)throw {code:'koneksi'};
+      const p=plan(T,idx);
       const arsipTaken=p.cara!=='kosong'&&ARSIP.some(a=>String(a[0])===p.key);
-      if(arsipTaken||(cur&&cur.no&&cur.status!=='batal')){if(cur&&cur.no)LIVE[p.key]={...cur,key:p.key};continue;}
+      if(arsipTaken)throw {code:'nomor_arsip'};
       const L=S.spj==='S'?estimate():[];
       const doc={key:p.key,seq:p.seq,sub:p.sub,no:nomor(idx,p.seq,p.sub),idx,tgl:T,uraian:ur,kepada:kp,jenis:S.spj,cara:p.cara,status:'aktif',
         subkeg:S.spj==='S'?$('subkeg').value:'',nilai:L.reduce((a,x)=>a+x[2],0),rek:S.spj==='S'?$('rek').value.trim():'',belanja:S.spj==='S'?S.bel:'',
         rincian:L.map(x=>({komponen:x[0],uraian:x[1],nilai:x[2]})),
         pelaksana:S.spj==='S'&&S.bel==='sppd'?S.pel.join(', '):'',mulai:S.bel==='sppd'?$('pmulai').value:'',akhir:S.bel==='sppd'?$('pakhir').value:'',
         lokasi:S.spj==='S'&&S.bel==='sppd'?(S.ld?PROV[+$('prov').value][0]:KOTA[+$('kota').value][0]):'',
-        at:new Date(Date.now()+7*3600e3).toISOString().slice(0,16).replace('T',' '),by:uid};
-      await ref.set(doc);LIVE[p.key]=doc;
-      $('done').innerHTML=`Nomor tersimpan: <b class="mono">${esc(doc.no)}</b> <button type="button" class="btn sm ghost" id="cp">Salin nomor</button>`;$('done').hidden=false;
+        at:new Date(Date.now()+7*3600e3).toISOString().slice(0,16).replace('T',' '),by:'aplikasi'};
+      const r=await api({action:'set',ifFree:true,doc});
+      if(!r.ok&&(r.code==='conflict'||r.code==='busy')){await new Promise(z=>setTimeout(z,400+Math.random()*600));continue;}
+      if(!r.ok)throw {code:r.code||'galat',msg:r.message||''};
+      LIVE[doc.key]={...doc};
+      $('done').innerHTML=`Nomor tersimpan di penyimpanan bersama: <b class="mono">${esc(doc.no)}</b> <button type="button" class="btn sm ghost" id="cp">Salin nomor</button>`;$('done').hidden=false;
       $('cp').onclick=()=>copy(doc.no);toast('Nomor '+doc.no+' tersimpan');
-      $('uraian').value='';S.pel=[];renderPel();renderArsip();renderRekap();preview();return;
+      $('uraian').value='';S.pel=[];renderPel();renderAll();showWho();return;
     }
     showErr('Nomor sedang diambil orang lain bersamaan. Tekan Ambil nomor sekali lagi.');
-  }catch(err){showErr('Nomor gagal disimpan ('+(err&&err.code||'galat')+'). '+(err&&err.code==='permission_denied'?'Akun Anda hanya bisa melihat; minta akses kontributor ke pemilik halaman.':'Coba lagi sebentar lagi.'));}
+  }catch(err){showErr('Nomor gagal disimpan ('+(err&&err.code||'galat')+'). '+(err&&err.code==='koneksi'?'Penyimpanan bersama tidak terjangkau; periksa koneksi internet.':err&&/protect|izin|permission|dilindungi/i.test(err.msg||'')?'Akun pemasang Apps Script belum diizinkan mengedit tab APP NODIN 2026.':'Coba lagi sebentar lagi.'));}
   finally{$('go').disabled=false;$('go').textContent='Ambil nomor';preview();}
 });
 function showErr(t){$('err').textContent=t;$('err').hidden=false;toast(t);const r=$('err').getBoundingClientRect();if(r.top<0||r.bottom>innerHeight)$('err').scrollIntoView({behavior:'smooth',block:'center'});}
@@ -677,7 +678,7 @@ function filtered(){
    (!fs||(fs==='paid'?!!PAID[e.key]:fs==='unpaid'?(e.jenis==='S'&&e.status!=='batal'&&!PAID[e.key]):fs==='S'||fs==='T'?e.jenis===fs:fs==='sis'?e.sub>0:fs==='batal'?e.status==='batal':e.src==='db'))&&
    (!q||[e.no,e.uraian,e.kepada,e.pelaksana,e.lokasi,e.rek].join(' ').toLowerCase().includes(q)));
 }
-function canEdit(){return !!db&&(user?.canEdit?.()||false);}
+function canEdit(){return !!API&&!SYNC.err;}
 function renderArsip(){
   const F=filtered(),rows=F.slice(0,arLimit);
   $('ar-count').textContent=`${nf(F.length)} nomor · terbaru di atas, nomor 001 paling bawah`;
@@ -696,7 +697,7 @@ function renderArsip(){
 $('ar-rows').addEventListener('click',async e=>{const k=e.target.dataset.bt;if(!k)return;
   if(e.target.dataset.sure!=='1'){e.target.dataset.sure='1';e.target.textContent='Yakin batalkan?';setTimeout(()=>{if(e.target.isConnected){e.target.dataset.sure='';e.target.textContent='Batalkan';}},4000);return;}
   const en=entries().find(x=>x.key===k);if(!en)return;const {src,...body}=en;
-  try{await db.collection('nodin').doc(k).set({...body,status:'batal',dibatalkan:new Date(Date.now()+7*3600e3).toISOString().slice(0,16).replace('T',' '),by_batal:uid});LIVE[k]={...body,status:'batal'};toast('Nomor '+en.no+' dibatalkan dan menjadi nomor kosong');renderAll();}
+  try{const d={...body,status:'batal',dibatalkan:new Date(Date.now()+7*3600e3).toISOString().slice(0,16).replace('T',' '),by_batal:'aplikasi'};const r=await api({action:'set',doc:d});if(!r.ok)throw {code:r.code};LIVE[k]=d;showWho();toast('Nomor '+en.no+' dibatalkan dan menjadi nomor kosong');renderAll();}
   catch(err){toast('Gagal membatalkan ('+(err&&err.code||'galat')+')');}});
 ['q','fm','fi','fs'].forEach(id=>$(id).addEventListener('input',()=>renderArsip()));
 $('ar-more').onclick=()=>{arLimit+=120;renderArsip();};
@@ -918,22 +919,39 @@ window.addEventListener('hashchange',route);
 /* ---------- Mulai ---------- */
 renderHon();renderTa();renderCtk();setBel('sppd');setSpj('S');setLd(false);idxChange();renderAll();route();
 
-/* Versi mandiri (GitHub Pages): data disimpan di browser ini (localStorage) */
+/* ---------- Penyimpanan bersama: tab APP NODIN 2026 (Apps Script, apps-script/Code.gs) ----------
+   Arsip 001–368 tetap dari data bawaan (ARSIP) di atas; sheet NODIN 2026 tidak dibaca dan tidak ditulis.
+   Yang disimpan bersama hanya nomor baru, sisipan, nomor kosong, dan pembatalan, agar terbaca di semua browser. */
+API='https://script.google.com/macros/s/AKfycbx8sPzoslSY8T7CMz7v-ptz2k3gAwTtBuoZ0mbau_TLAytfPh3sdkgiFpknj2wMoCqEkw/exec';
+async function api(req){const r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(req)});if(!r.ok)throw {code:'HTTP '+r.status};return r.json();}
+function showWho(){$('who').textContent=SYNC.err||`Penyimpanan bersama (tab APP NODIN 2026) · ${nf(Object.keys(LIVE).length)} nomor baru/perubahan · diperbarui ${new Date(SYNC.at).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}`;}
+async function refreshData(){
+  try{const r=await fetch(API+'?t='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json();if(!j||!j.ok)throw new Error('galat');
+    const L={};(j.app||[]).forEach(d=>{if(d&&d.key&&d.no)L[String(d.key)]={...d,key:String(d.key)};});LIVE=L;SYNC={at:Date.now(),err:''};}
+  catch(e){SYNC.err='Penyimpanan bersama belum terbaca; nomor baru dari perangkat lain belum tampil. Periksa koneksi internet.';}
+  showWho();
+}
+let lastSync=0;
+async function sync(){lastSync=Date.now();await refreshData();renderAll();}
+showWho();sync().then(checkOld);
+setInterval(()=>{if(document.visibilityState==='visible')sync();},60000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&Date.now()-lastSync>15000)sync();});
+/* Kirim nomor dari cadangan / versi lama (tersimpan di browser) ke penyimpanan bersama */
+async function pushDocs(obj){let ok=0,bentrok=[];
+  for(const [k,v] of Object.entries(obj||{})){if(!v||!v.no)continue;const d={...v,key:String(v.key||k)};delete d.src;
+    if(LIVE[d.key]&&LIVE[d.key].no===d.no&&LIVE[d.key].status===d.status)continue;
+    const r=await api({action:'set',ifFree:d.status!=='batal',doc:d});if(r.ok)ok++;else bentrok.push(d.no);}
+  await sync();return {ok,bentrok};}
 const LSK='nodin-keuangan-2026';
-function lsRead(){try{return JSON.parse(localStorage.getItem(LSK)||'{}')}catch(e){return {}}}
-function lsWrite(o){try{localStorage.setItem(LSK,JSON.stringify(o));return true}catch(e){return false}}
-const subs=[];
-function emit(){const o=lsRead();const snap={docs:Object.entries(o).map(([id,d])=>({id,exists:true,data:()=>d})),metadata:{fromCache:false}};subs.forEach(f=>f(snap));}
-db={collection:()=>({doc:k=>({acquire:async()=>({acquired:true}),get:async()=>{const o=lsRead();return {exists:!!o[k],data:()=>o[k]}},
-  set:async d=>{const o=lsRead();o[k]=d;if(!lsWrite(o))throw {code:'penyimpanan_browser_penuh_atau_diblokir'};setTimeout(emit,0);}}),
-  onSnapshot:(f)=>{subs.push(f);setTimeout(emit,0);return ()=>{}}})};
-EDITOR=true;uid='lokal';
-window.addEventListener('storage',e=>{if(e.key===LSK)emit();});
-db.collection('nodin').onSnapshot(snap=>{const L={};snap.docs.forEach(x=>{const dd=x.data();if(dd&&dd.no)L[x.id]={...dd,key:x.id};});LIVE=L;
-  $('who').textContent=`Tersimpan di browser ini · ${nf(Object.keys(L).length)} nomor baru`;renderAll();});
-/* Cadangan: unduh / muat data */
-$('bk-dl').onclick=()=>{const b=new Blob([JSON.stringify(lsRead(),null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='nodin-2026-'+today()+'.json';a.click();};
-$('bk-up').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const inc=JSON.parse(await f.text());const o=lsRead();let n=0;Object.entries(inc).forEach(([k,v])=>{if(v&&v.no&&(!o[k]||(v.at||'')>=(o[k].at||''))){o[k]=v;n++;}});lsWrite(o);emit();toast(n+' nomor dimuat');}catch(err){toast('Berkas tidak bisa dibaca');}e.target.value='';};
+function lsOld(){try{return JSON.parse(localStorage.getItem(LSK)||'{}')}catch(e){return {}}}
+function checkOld(){const o=lsOld();const pend=Object.values(o).filter(v=>v&&v.no&&!(LIVE[v.key]&&LIVE[v.key].no===v.no));const p=$('ls-old');
+  if(!pend.length||SYNC.err){p.hidden=true;return;}
+  p.hidden=false;p.innerHTML=`Browser ini masih menyimpan ${pend.length} nomor dari versi sebelumnya (hanya tersimpan di browser ini, belum terbaca di perangkat lain): ${pend.slice(0,6).map(v=>'<span class="mono">'+esc(v.no)+'</span>').join(', ')}${pend.length>6?', …':''}. <button type="button" class="btn sm" id="ls-push">Kirim ke penyimpanan bersama</button>`;
+  $('ls-push').onclick=async()=>{$('ls-push').disabled=true;const r=await pushDocs(Object.fromEntries(pend.map(v=>[v.key,v])));
+    if(!r.bentrok.length){try{localStorage.removeItem(LSK);}catch(e){}}
+    toast(`${r.ok} nomor terkirim`+(r.bentrok.length?` · ${r.bentrok.length} bentrok (nomornya sudah dipakai): ${r.bentrok.join(', ')}`:''));checkOld();};}
+$('bk-dl').onclick=()=>{const b=new Blob([JSON.stringify(LIVE,null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='nodin-2026-'+today()+'.json';a.click();};
+$('bk-up').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const inc=JSON.parse(await f.text());const r=await pushDocs(inc.app||inc);toast(`${r.ok} nomor dimuat ke penyimpanan bersama`+(r.bentrok.length?` · ${r.bentrok.length} bentrok`:''));}catch(err){toast('Berkas tidak bisa dibaca');}e.target.value='';};
 
 /* ---------- Status NPD: dibaca publik dari sheet NPD 2026 (sumber aplikasi Nomor Nota Pencairan Dana) ---------- */
 var NPD_CSV='https://docs.google.com/spreadsheets/d/1dLejaq2KWhWoWaoxD8OBxaYycYMOMTDe02YbomQN41U/export?format=csv&gid=662009166';
