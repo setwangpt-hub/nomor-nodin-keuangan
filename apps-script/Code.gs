@@ -6,14 +6,19 @@
  * - Nomor baru  : ditambahkan sebagai baris baru di sheet NODIN 2026 (kolom sama seperti Google Form),
  *                 sehingga nomornya keluar dari rumus kolom A dan tidak bentrok dengan Form.
  * - Sisipan, nomor kosong, pembatalan, dan rincian estimasi: disimpan di tab APP NODIN 2026.
+ * - NPD baru dari aplikasi Nomor Nota Pencairan Dana Keuangan: disimpan di tab APP NPD 2026
+ *   (sheet NPD 2026 tidak dibaca dan tidak ditulis; arsip NPD lama ada di dalam aplikasinya).
  */
 var MAIN = 'NODIN 2026';
 var APP = 'APP NODIN 2026';
 var APP_COLS = ['key', 'seq', 'sub', 'no', 'idx', 'tgl', 'uraian', 'kepada', 'jenis', 'cara', 'status', 'subkeg', 'nilai', 'rek',
   'belanja', 'pelaksana', 'mulai', 'akhir', 'lokasi', 'rincian', 'at', 'by', 'dibatalkan', 'by_batal'];
 
+var NPD_APP = 'APP NPD 2026';
+var NPD_COLS = ['num', 'no', 'ts', 'nodin', 'si', 'keg', 'sub', 'rek', 'nilai', 'uraian', 'oleh', 'at'];
+
 function doGet(e) {
-  return out_({ ok: true, app: readApp_() });
+  return out_({ ok: true, app: readApp_(), npd: readNpd_() });
 }
 
 function doPost(e) {
@@ -24,6 +29,7 @@ function doPost(e) {
   try {
     if (req.action === 'baru') return out_(baru_(req.doc, req.expectSeq));
     if (req.action === 'set') return out_(set_(req.doc, !!req.ifFree));
+    if (req.action === 'npd') return out_(npd_(req.doc, req.base));
     return out_({ ok: false, code: 'unknown_action' });
   } catch (err) {
     return out_({ ok: false, code: 'server_error', message: String(err) });
@@ -137,6 +143,46 @@ function appSheet_() {
   return sh;
 }
 
+/* ---------- NPD baru: tab APP NPD 2026 ---------- */
+function npd_(d, base) {
+  d = d || {};
+  var nilai = Number(d.nilai) || 0, si = Number(d.si);
+  if (!(nilai > 0) || !String(d.uraian || '').trim() || !(si >= 0 && si < 15) || !String(d.rek || '').trim()) return { ok: false, code: 'bad_request', message: 'Isian NPD tidak lengkap' };
+  var sh = npdSheet_(), n = sh.getLastRow(), max = Number(base) || 0;
+  if (n >= 2) sh.getRange(2, 1, n - 1, 1).getValues().forEach(function (r) { var v = Number(r[0]); if (v > max) max = v; });
+  var num = max + 1;
+  var o = {
+    num: num, no: ('00' + num).slice(-3) + '/KPA/KEU/2026',
+    ts: Utilities.formatDate(new Date(), 'Asia/Jakarta', 'dd/MM/yyyy H:mm:ss'),
+    nodin: String(d.nodin || ''), si: si, keg: String(d.keg || ''), sub: String(d.sub || ''), rek: String(d.rek),
+    nilai: nilai, uraian: String(d.uraian), oleh: String(d.oleh || ''), at: new Date().toISOString()
+  };
+  sh.getRange(n + 1, 1, 1, NPD_COLS.length).setNumberFormat('@')
+    .setValues([NPD_COLS.map(function (c) { return String(o[c]); })]);
+  return { ok: true, doc: o };
+}
+
+function readNpd_() {
+  var sh = npdSheet_(), n = sh.getLastRow();
+  if (n < 2) return [];
+  return sh.getRange(2, 1, n - 1, NPD_COLS.length).getValues().map(function (r) {
+    var o = {};
+    NPD_COLS.forEach(function (c, i) { o[c] = String(r[i]); });
+    o.num = Number(o.num) || 0; o.si = Number(o.si); o.nilai = Number(o.nilai) || 0;
+    return o;
+  }).filter(function (o) { return o.num; });
+}
+
+function npdSheet_() {
+  var ss = ss_(), sh = ss.getSheetByName(NPD_APP);
+  if (!sh) {
+    sh = ss.insertSheet(NPD_APP);
+    sh.getRange(1, 1, 1, NPD_COLS.length).setValues([NPD_COLS]).setFontWeight('bold');
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+
 function ss_() { return SpreadsheetApp.getActiveSpreadsheet(); }
 
 function toDate_(s) {
@@ -148,5 +194,5 @@ function out_(o) {
   return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
 }
 
-/** Jalankan sekali dari editor untuk membuat tab APP NODIN 2026 dan memberi izin akses. */
-function setup() { appSheet_(); }
+/** Jalankan sekali dari editor untuk membuat tab APP NODIN 2026 & APP NPD 2026 dan memberi izin akses. */
+function setup() { appSheet_(); npdSheet_(); }
