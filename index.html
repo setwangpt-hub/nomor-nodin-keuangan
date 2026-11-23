@@ -953,31 +953,38 @@ function checkOld(){const o=lsOld();const pend=Object.values(o).filter(v=>v&&v.n
 $('bk-dl').onclick=()=>{const b=new Blob([JSON.stringify(LIVE,null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='nodin-2026-'+today()+'.json';a.click();};
 $('bk-up').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const inc=JSON.parse(await f.text());const r=await pushDocs(inc.app||inc);toast(`${r.ok} nomor dimuat ke penyimpanan bersama`+(r.bentrok.length?` · ${r.bentrok.length} bentrok`:''));}catch(err){toast('Berkas tidak bisa dibaca');}e.target.value='';};
 
-/* ---------- Status NPD: dibaca publik dari sheet NPD 2026 (sumber aplikasi Nomor Nota Pencairan Dana) ---------- */
-var NPD_CSV='https://docs.google.com/spreadsheets/d/1dLejaq2KWhWoWaoxD8OBxaYycYMOMTDe02YbomQN41U/export?format=csv&gid=662009166';
-var NPD_APP='https://setwangpt-hub.github.io/nomor-nota-pencairan-dana-keuangan/?v=3#arsip';
-var NPDMAP=null,NPDERR='',NPDAT=0;
-function csvParse(t){const R=[];let row=[],f='',q=false;for(let i=0;i<t.length;i++){const c=t[i];
-  if(q){if(c==='"'){if(t[i+1]==='"'){f+='"';i++;}else q=false;}else f+=c;}
-  else if(c==='"')q=true;else if(c===','){row.push(f);f='';}else if(c==='\n'){row.push(f);R.push(row);row=[];f='';}else if(c!=='\r')f+=c;}
-  if(f!==''||row.length){row.push(f);R.push(row);}return R;}
-// Kolom D sheet NPD berisi nomor urut nodin: "036" -> "36", sisipan "368.1" -> "368_1" (sama dengan key arsip)
-function npdKey(s){const m=String(s||'').trim().match(/^(\d{1,3})(?:\.(\d+))?$/);if(!m)return '';const q=parseInt(m[1],10);if(!q)return '';return m[2]?q+'_'+parseInt(m[2],10):String(q);}
-async function loadNPDStatus(){NPDAT=Date.now();
-  try{const r=await fetch(NPD_CSV,{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);const V=csvParse(await r.text());const M={};
-    for(let i=1;i<V.length;i++){const x=V[i]||[];if(!String(x[1]||'').trim())continue;const num=parseInt(String(x[0]||'').trim(),10);if(!(num>=1))continue;
-      const k=npdKey(x[3]);if(!k)continue;(M[k]=M[k]||[]).push({no:String(x[0]).trim(),num,nilai:pnum(String(x[21]||'').replace(/[^\d.,]/g,'')),tgl:String(x[1]||'').split(' ')[0]});}
-    Object.values(M).forEach(L=>L.sort((a,b)=>a.num-b.num));NPDMAP=M;NPDERR='';}
-  catch(e){NPDERR='Data NPD belum terbaca';if(!NPDMAP)NPDMAP={};}
-  renderArsip();}
+/* ---------- Status NPD: otomatis dari aplikasi Nomor Nota Pencairan Dana ----------
+   Sumber sama persis dengan Arsip NPD di aplikasi NPD (tanpa spreadsheet):
+   - NPD 001–110: arsip bawaan aplikasi NPD (disalin di bawah, nomornya tetap)
+   - NPD 111 dst.: Web App penyimpanan bersama "Nomor NPD Keuangan - Penyimpanan", dibaca ulang tiap 30 detik */
+var NPD_API='https://script.google.com/macros/s/AKfycbyQU9aZMCf1DEYluXFqdBTc6tR2esp6uRmTMykX_IXpGpy2OE7uKiuYIr5j9xcApnjP/exec';
+var NPD_APP='https://setwangpt-hub.github.io/nomor-nota-pencairan-dana-keuangan/#arsip';
+// [nomor urut NPD, nomor nodin (kolom isian), nilai, tanggal]
+var NPD_ARSIP=[[1,"008",1643600,"29/01/2026"],[2,"023",25175788,"29/01/2026"],[3,"106",10000000,"29/01/2026"],[4,"289",200000,"29/01/2026"],[5,"036",6300000,"02/02/2026"],[6,"037",11982100,"02/02/2026"],[7,"033",1100000,"19/02/2026"],[8,"054",4300000,"20/02/2026"],[9,"057",15373000,"02/03/2026"],[10,"052",3521400,"03/03/2026"],[11,"053",3580300,"03/03/2026"],[12,"063",600000,"04/03/2026"],[13,"000",24335000,"06/03/2026"],[14,"0000",24335000,"06/03/2026"],[15,"067",2739200,"09/03/2026"],[16,"002",42657300,"10/03/2026"],[17,"69",4430800,"11/03/2026"],[18,"073",1579200,"11/03/2026"],[19,"079",3643400,"13/03/2026"],[20,"000",26180000,"16/03/2026"],[21,"000",26180000,"16/03/2026"],[22,"000",26180000,"16/03/2026"],[23,"085",4410800,"25/03/2026"],[24,"088",3817500,"25/03/2026"],[25,"091",2489400,"30/03/2026"],[26,"100",900000,"06/04/2026"],[27,"99",900000,"06/04/2026"],[28,"107",57300000,"17/04/2026"],[29,"Irfan Putra Nurdiansah",7500000,"21/04/2026"],[30,"109",7500000,"21/04/2026"],[31,"118",4800000,"27/04/2026"],[32,"125",1200000,"30/04/2026"],[33,"115",2400000,"04/05/2026"],[34,"127",3836800,"04/05/2026"],[35,"128",5550800,"04/05/2026"],[36,"129",4300364,"04/05/2026"],[37,"rama ramadhan",3940800,"05/05/2026"],[38,"130",4551500,"05/05/2026"],[39,"000",50515000,"07/05/2026"],[40,"000",50515000,"07/05/2026"],[41,"149",4086000,"12/05/2026"],[42,"153",3588344,"19/05/2026"],[43,"154",5506000,"19/05/2026"],[44,"1525",4198900,"20/05/2026"],[45,"1527",3664800,"25/05/2026"],[46,"161",2800000,"26/05/2026"],[47,"155",4343000,"02/06/2026"],[48,"172",3873100,"08/06/2026"],[49,"135",3672800,"08/06/2026"],[50,"178",3942000,"15/06/2026"],[51,"1857",12414970,"15/06/2026"],[52,"183",3102200,"17/06/2026"],[53,"191",3723250,"25/06/2026"],[54,"137",3745800,"25/06/2026"],[55,"193",5121800,"29/06/2026"],[56,"000",50515000,"29/06/2026"],[57,"000",50515000,"29/06/2026"],[58,"205",3342000,"30/06/2026"],[59,"2060",4528050,"03/07/2026"],[60,"211",4528050,"07/07/2026"],[61,"000",420000,"09/07/2026"],[62,"000",420000,"09/07/2026"],[63,"000",420000,"09/07/2026"],[64,"000",420000,"09/07/2026"],[65,"000",420000,"09/07/2026"],[66,"000",420000,"09/07/2026"],[67,"222",4629750,"23/07/2026"],[68,"225",4239000,"30/07/2026"],[69,"226",6098500,"30/07/2026"],[70,"000",420000,"05/08/2026"],[71,"229",10218650,"12/08/2026"],[72,"237",4391500,"12/08/2026"],[73,"224",35100000,"12/08/2026"],[74,"253",7263500,"24/08/2026"],[75,"254",2889000,"26/08/2026"],[76,"255",3958700,"26/08/2026"],[77,"258",1490400,"27/08/2026"],[78,"259",5262750,"31/08/2026"],[79,"224",6369555,"02/09/2026"],[80,"000",50515000,"07/09/2026"],[81,"000",50515000,"07/09/2026"],[82,"293",3455300,"09/09/2026"],[83,"000",420000,"09/09/2026"],[84,"261",4450800,"10/09/2026"],[85,"269",5278300,"10/09/2026"],[86,"276",45740000,"14/09/2026"],[87,"292",13889684,"21/09/2026"],[88,"208",54110000,"21/09/2026"],[89,"282",3106800,"21/09/2026"],[90,"295",9042410,"22/09/2026"],[91,"266",11058000,"30/09/2026"],[92,"271",13663000,"30/09/2026"],[93,"000",420000,"06/10/2026"],[94,"323",4721400,"07/10/2026"],[95,"11",100,"12/10/2026"],[96,"333",5180400,"13/10/2026"],[97,"334",4883500,"15/10/2026"],[98,"5020",1224000,"20/10/2026"],[99,"5020",1224000,"20/10/2026"],[100,"5020",1224000,"20/10/2026"],[101,"5020",1224000,"20/10/2026"],[102,"5020",1224000,"20/10/2026"],[103,"5020",1224000,"20/10/2026"],[104,"348",1500000,"26/10/2026"],[105,"3723",24443680,"26/10/2026"],[106,"3565",13373500,"26/10/2026"],[107,"345",12225000,"28/10/2026"],[108,"3934",3009000,"28/10/2026"],[109,"000",50515000,"03/11/2026"],[110,"000",11636000,"03/11/2026"]];
+var NPDMAP=null,NPDERR='',NPDAT=0,NPDSIG='',NPDBUSY=false;
+// Nomor nodin di NPD: "036" -> "36", sisipan "368.1" -> "368_1" (sama dengan key arsip nodin)
+function npdKey(s){const m=String(s||'').trim().replace(/,/g,'.').match(/^(\d{1,3})(?:\.(\d+))?$/);if(!m)return '';const q=parseInt(m[1],10);if(!q)return '';return m[2]?q+'_'+parseInt(m[2],10):String(q);}
+function pad3n(n){return ('00'+n).slice(-3);}
+async function loadNPDStatus(){if(NPDBUSY)return;NPDBUSY=true;NPDAT=Date.now();
+  const byNum=new Map();NPD_ARSIP.forEach(a=>byNum.set(a[0],{num:a[0],nodin:a[1],nilai:+a[2]||0,tgl:a[3]}));
+  let err='';
+  try{const r=await fetch(NPD_API+'?t='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json();if(!j||!j.ok)throw new Error('galat');
+    (Array.isArray(j.npd)?j.npd:[]).forEach(o=>{const n=+o.num;if(!n)return;byNum.set(n,{num:n,no:o.no,nodin:o.nodin,nilai:+o.nilai||0,tgl:String(o.ts||'').split(' ')[0]});});}
+  catch(e){err='NPD baru belum terbaca';}
+  const M={};byNum.forEach(o=>{const k=npdKey(o.nodin);if(!k)return;(M[k]=M[k]||[]).push({no:o.no||pad3n(o.num)+'/KPA/KEU/2026',num:o.num,nilai:o.nilai,tgl:o.tgl});});
+  Object.values(M).forEach(L=>L.sort((a,b)=>a.num-b.num));
+  const sig=JSON.stringify(M)+'|'+err;NPDBUSY=false;
+  if(err&&NPDMAP){if(NPDERR!==err){NPDERR=err;renderArsip();}return;}   // gagal sesaat: tetap pakai data NPD terakhir
+  if(sig===NPDSIG&&err===NPDERR)return;NPDSIG=sig;NPDMAP=M;NPDERR=err;renderArsip();}
 function npdCell(e){
   if(NPDMAP==null)return '<span class="m">Memuat NPD…</span>';
   const L=NPDMAP[e.key];
-  if(!L||!L.length)return `<span class="m">${NPDERR?esc(NPDERR):(e.jenis==='S'&&e.status!=='batal'?'Belum ada NPD':'–')}</span>`;
+  if(!L||!L.length)return `<span class="m">${e.jenis==='S'&&e.status!=='batal'?(NPDERR?esc(NPDERR):'Belum ada NPD'):'–'}</span>`;
   const tot=L.reduce((a,n)=>a+n.nilai,0);
   return L.map(n=>`<a class="mono" href="${NPD_APP}" target="_blank" rel="noopener" title="NPD tanggal ${esc(n.tgl)}">${esc(n.no)}</a><span class="m num">${rp(n.nilai)}</span>`).join('')+(L.length>1?`<span class="m num tot">Total ${rp(tot)}</span>`:'');}
 loadNPDStatus();
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&Date.now()-NPDAT>60000)loadNPDStatus();});
+setInterval(()=>{if(document.visibilityState==='visible')loadNPDStatus();},30000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&Date.now()-NPDAT>10000)loadNPDStatus();});
 </script>
 
 </body>
