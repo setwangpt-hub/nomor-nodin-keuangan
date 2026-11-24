@@ -1382,11 +1382,14 @@ body.nc-open{overflow:hidden}
   var RE_NO = /\d{3}(?:\.\d+)*\/\d+(?:\.\d+)?\/050\.3\/\d{4}(?!\d)/;
   function addRevisi(){
     var tb = $("ar-rows"); if(!tb) return;
+    var nos = entriesSafe().map(function(e){ return e && e.no; }).filter(Boolean);
     Array.prototype.forEach.call(tb.querySelectorAll("tr"), function(tr){
       if(tr.querySelector(".nc-rev") || !tr.cells.length) return;
-      var m = RE_NO.exec((tr.cells[0].textContent||"")); if(!m) return;
-      var b = el("button","btn sm ghost nc-rev","Revisi"); b.type = "button"; b.dataset.no = m[0];
-      b.title = "Revisi dan cetak nodin "+m[0];
+      var t = (tr.cells[0].textContent||"").trim(), no = "";
+      nos.forEach(function(n){ if(n.length>no.length && t.indexOf(n)===0) no = n; });
+      if(!no){ var m = RE_NO.exec(t); if(!m) return; no = m[0]; }
+      var b = el("button","btn sm ghost nc-rev","Revisi"); b.type = "button"; b.dataset.no = no;
+      b.title = "Revisi dan cetak nodin "+no;
       tr.cells[tr.cells.length-1].appendChild(b);
     });
   }
