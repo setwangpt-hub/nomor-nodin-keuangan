@@ -219,6 +219,8 @@ tr.batal td:first-child,tr.batal td:last-child{opacity:1}
           </div>
           <div class="row" id="inap-w" hidden><span class="lbl">Penginapan</span>
             <div class="seg" role="group" aria-label="Penginapan dalam kota"><button type="button" id="i-tidak" aria-pressed="true">Tanpa menginap</button><button type="button" id="i-ya" aria-pressed="false">Menginap</button></div></div>
+          <div class="row" id="inap30-w" hidden><span class="lbl">Biaya penginapan</span>
+            <div class="seg" role="group" aria-label="Biaya penginapan dalam daerah"><button type="button" id="h-hotel" aria-pressed="true">Hotel (per kamar)</button><button type="button" id="h-30" aria-pressed="false">30% tarif hotel (per orang)</button></div></div>
           <div class="row" id="mode-w" hidden><span class="lbl">Moda transportasi</span>
             <div class="seg" role="group" aria-label="Moda transportasi"><button type="button" id="m-udara" aria-pressed="true">Udara</button><button type="button" id="m-darat" aria-pressed="false">Darat</button></div>
             <div class="seg" role="group" aria-label="Jenis transportasi darat" id="darat-w" hidden><button type="button" id="d-dinas" aria-pressed="true">Kendaraan dinas</button><button type="button" id="d-umum" aria-pressed="false">Kereta / bus</button></div></div>
@@ -450,7 +452,7 @@ const HON=[['Narasumber Menteri/pejabat setingkat',1700000,'OJ'],['Narasumber Ke
 /* ---------- State ---------- */
 let LIVE={};            // dokumen db: key -> data
 let API='',SYNC={at:0,err:'Memuat penyimpanan bersama…'};
-const S={spj:'S',bel:'sppd',ld:false,inap:false,moda:'udara',darat:'dinas',pov:{},rt:null,rtKey:'',pel:[],hon:[[4,1,2,false],[6,1,1,false]],ta:[[2,1,1]],ctk:[['Dokumen',100,10,'bw','sc']]};
+const S={spj:'S',bel:'sppd',ld:false,inap:false,inap30:false,moda:'udara',darat:'dinas',pov:{},rt:null,rtKey:'',pel:[],hon:[[4,1,2,false],[6,1,1,false]],ta:[[2,1,1]],ctk:[['Dokumen',100,10,'bw','sc']]};
 
 function entries(){
   const m=new Map();
@@ -498,6 +500,8 @@ function setSpj(v){S.spj=v;$('spj-s').setAttribute('aria-pressed',v==='S');$('sp
 $('spj-s').onclick=()=>setSpj('S');$('spj-t').onclick=()=>setSpj('T');
 function setInap(v){S.inap=v;$('i-tidak').setAttribute('aria-pressed',!v);$('i-ya').setAttribute('aria-pressed',v);calc();}
 $('i-tidak').onclick=()=>setInap(false);$('i-ya').onclick=()=>setInap(true);
+function setInap30(v){S.inap30=v;$('h-hotel').setAttribute('aria-pressed',!v);$('h-30').setAttribute('aria-pressed',v);calc();}
+$('h-hotel').onclick=()=>setInap30(false);$('h-30').onclick=()=>setInap30(true);
 function setLd(v){S.ld=v;$('dd-on').setAttribute('aria-pressed',!v);$('ld-on').setAttribute('aria-pressed',v);$('w-kota').hidden=v;$('w-prov').hidden=!v;document.querySelectorAll('.dd-only').forEach(e=>e.hidden=v);calc();}
 function setModa(m){S.moda=m;$('m-udara').setAttribute('aria-pressed',m==='udara');$('m-darat').setAttribute('aria-pressed',m==='darat');calc();}
 function setDarat(d){S.darat=d;$('d-dinas').setAttribute('aria-pressed',d==='dinas');$('d-umum').setAttribute('aria-pressed',d==='umum');calc();}
@@ -564,17 +568,18 @@ function estimate(){
       else if(mode==='umum')defs.push(['tiket','Tiket kereta/bus PP / orang',jb[2]],['tx1','Taksi Surabaya sekali jalan',RT.taksiJatim],['tx2',`Taksi ${p[5]} sekali jalan`,p[4]]);
       else defs.push(['km','Jarak sekali jalan (km)',jb[0]],['kmpl','Km per liter',RT.kmpl],['bbm','Harga BBM / liter',RT.bbm],['tol','Tol + penyeberangan sekali jalan / kendaraan',jb[1]]);}
     if(!S.ld)$('mode-w').hidden=true;else $('inap-w').hidden=true;
+    $('inap30-w').hidden=S.ld||nk||M<1;const h30=!S.ld&&!nk&&S.inap30;
     const key=mode+'|'+label+'|'+defs.map(d=>d[0]).join(',');
     if(S.rtKey!==key){S.rtKey=key;S.rt={};S.rtDef={};defs.forEach(d=>{S.rt[d[0]]=d[2];S.rtDef[d[0]]=d[2];});
       $('rt-w').innerHTML=defs.map(d=>`<div class="f"><label for="rt-${d[0]}">${esc(d[1])}</label><input type="text" id="rt-${d[0]}" data-rt="${d[0]}" class="num" inputmode="numeric" value="${nf(d[2])}"><small>Standar ${d[0]==='km'||d[0]==='kmpl'?nf(d[2]):rp(d[2])}</small></div>`).join('');}
     document.querySelectorAll('#rt-w [data-rt]').forEach(i=>i.closest('.f').classList.toggle('rt-ed',S.rt[i.dataset.rt]!==S.rtDef[i.dataset.rt]));
     const R=S.rt,useVeh=defs.some(d=>d[0]==='km');$('veh-w').hidden=!useVeh;
     // --- pelaksana & kamar ---
-    let N,rooms;const auto=S.pel.length>0;
+    let N,rooms,nA=0;const auto=S.pel.length>0;
     document.querySelectorAll('.man-only').forEach(e=>e.hidden=auto);$('peg-w').hidden=!auto;$('peg-k').hidden=!auto;
     if(auto){
       const ps=S.pel.map(n=>{const f=pegFind(n),o=S.pov[n]||{};const kelas=o.k||(f?f[1]:'B');return {n,f,kelas,sx:o.sx||(f?f[2]:''),solo:SOLO(n)};});
-      N=ps.length;rooms=[];
+      N=ps.length;nA=ps.filter(p=>p.kelas==='A').length;rooms=[];
       ps.filter(p=>p.solo).forEach(p=>rooms.push([p]));
       ['L','P',''].forEach(g=>{const q=ps.filter(p=>!p.solo&&p.sx===g).sort((a,b)=>a.kelas.localeCompare(b.kelas));
         if(!g){q.forEach(p=>rooms.push([p]));return;}for(let i=0;i<q.length;i+=2)rooms.push(q.slice(i,i+2));});
@@ -582,17 +587,18 @@ function estimate(){
       $('peg-rows').innerHTML=ps.map((p,i)=>`<tr><td>${esc(p.n)}${p.f?'':'<span class="m" style="display:block;color:var(--warn);font-size:12px">Tidak ada di data pegawai · dihitung kelas B</span>'}</td>
         <td><select data-pk="${esc(p.n)}"><option value="A" ${p.kelas==='A'?'selected':''}>Kelas A</option><option value="B" ${p.kelas==='B'?'selected':''}>Kelas B</option></select></td>
         <td><select data-px="${esc(p.n)}"><option value="" ${!p.sx?'selected':''}>?</option><option value="L" ${p.sx==='L'?'selected':''}>L</option><option value="P" ${p.sx==='P'?'selected':''}>P</option></select></td>
-        <td class="num">${nk?'–':`Kamar ${p.room}${p.solo?' · sendiri':''}`}</td></tr>`).join('');
-      $('peg-k').textContent=nk?'Perjalanan dalam kota tanpa penginapan.':`${rooms.length} kamar: Sri Nurwidayati dan Ali Kuncoro selalu 1 kamar 1 orang; pegawai lain 1 kamar 2 orang sesuai gender (gender "?" dihitung sendiri). Kelas A = Eselon III / Gol. IV, kelas B = Gol. III ke bawah; kamar berisi anggota kelas A memakai tarif kelas A. Kelas dan gender bisa diubah di tabel.`;
+        <td class="num">${nk?'–':h30?'30% · per orang':`Kamar ${p.room}${p.solo?' · sendiri':''}`}</td></tr>`).join('');
+      $('peg-k').textContent=nk?'Perjalanan dalam kota tanpa penginapan.':h30?`Penginapan 30%: tiap pelaksana mendapat 30% tarif hotel sesuai kelasnya per malam, dihitung per orang (bukan per kamar). Kelas A = Eselon III / Gol. IV, kelas B = Gol. III ke bawah; kelas dan gender bisa diubah di tabel.`:`${rooms.length} kamar: Sri Nurwidayati dan Ali Kuncoro selalu 1 kamar 1 orang; pegawai lain 1 kamar 2 orang sesuai gender (gender "?" dihitung sendiri). Kelas A = Eselon III / Gol. IV, kelas B = Gol. III ke bawah; kamar berisi anggota kelas A memakai tarif kelas A. Kelas dan gender bisa diubah di tabel.`;
       $('n-org').value=N;
     }else{
-      N=Math.max(1,Math.round(pnum($('n-org').value)));const G4=Math.min(N,Math.round(pnum($('n-g4').value))),opk=Math.max(1,Math.round(pnum($('n-opk').value)));
+      N=Math.max(1,Math.round(pnum($('n-org').value)));const G4=Math.min(N,Math.round(pnum($('n-g4').value)));nA=G4;const opk=Math.max(1,Math.round(pnum($('n-opk').value)));
       rooms=[];const pa=[...Array(G4)].map(()=>({kelas:'A'})),pb=[...Array(N-G4)].map(()=>({kelas:'B'}));
       for(let i=0;i<pa.length;i+=opk)rooms.push(pa.slice(i,i+opk));for(let i=0;i<pb.length;i+=opk)rooms.push(pb.slice(i,i+opk));
     }
     const kA=rooms.filter(r=>r.some(p=>p.kelas==='A')).length,kB=rooms.length-kA;
     L.push(['Uang harian',`${H} hari × ${rp(R.uh)} × ${N} orang`,H*R.uh*N]);
-    if(R.hA!=null&&M>0)L.push(['Penginapan',`${M} malam × (${kA} kamar A × ${rp(R.hA)} + ${kB} kamar B × ${rp(R.hB)})`,M*(kA*R.hA+kB*R.hB)]);
+    if(R.hA!=null&&M>0&&h30)L.push(['Penginapan 30%',`${M} malam × 30% × (${nA} orang A × ${rp(R.hA)} + ${N-nA} orang B × ${rp(R.hB)})`,Math.round(M*0.3*(nA*R.hA+(N-nA)*R.hB))]);
+    else if(R.hA!=null&&M>0)L.push(['Penginapan',`${M} malam × (${kA} kamar A × ${rp(R.hA)} + ${kB} kamar B × ${rp(R.hB)})`,M*(kA*R.hA+kB*R.hB)]);
     if(useVeh){const veh=Math.max(0,Math.round(pnum($('n-veh').value)));
       if(R.km>0&&veh){const lt=2*R.km/Math.max(1,R.kmpl);L.push(['BBM',`${veh} kendaraan × ${nf(Math.round(lt*10)/10)} liter × ${rp(R.bbm)}`,Math.round(veh*lt*R.bbm)]);}
       if(R.tol&&veh)L.push([S.ld?'Tol + penyeberangan PP':'Tol pulang pergi',`${veh} kendaraan × 2 × ${rp(R.tol)}`,veh*2*R.tol]);}
