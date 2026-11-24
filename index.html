@@ -999,5 +999,455 @@ setInterval(()=>{if(document.visibilityState==='visible')loadNPDStatus();},30000
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&Date.now()-NPDAT>10000)loadNPDStatus();});
 </script>
 
+<!-- ===== MODUL: NODIN SIAP CETAK (pop up) — tempel tepat sebelum tag penutup body ===== -->
+<style id="nc-style">
+.nc-modal{position:fixed;inset:0;z-index:9999;background:rgba(15,25,20,.55);display:flex;align-items:flex-start;justify-content:center;padding:18px;overflow:auto}
+.nc-modal[hidden]{display:none}
+.nc-box{background:var(--bg,#f2f4f1);border-radius:12px;width:min(1320px,100%);box-shadow:0 18px 50px rgba(0,0,0,.35);display:grid;gap:14px;padding:16px}
+.nc-head{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;background:var(--surface,#fff);border:1px solid var(--line,#d7ddd9);border-radius:10px;padding:12px 14px;position:sticky;top:0;z-index:2}
+.nc-head h2{margin:0;font-size:18px}
+.nc-head .nc-no{font-family:var(--f-num,monospace);font-size:13px;color:var(--muted,#5b6762)}
+.nc-x{font-size:20px;line-height:1;padding:6px 12px}
+.nc-grid{display:grid;grid-template-columns:minmax(0,430px) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:1060px){.nc-grid{grid-template-columns:1fr}}
+.nc-form{display:grid;gap:14px}
+.nc-form .fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+.nc-form .f{display:grid;gap:5px;min-width:0}
+.nc-form .f input,.nc-form .f select,.nc-form textarea{width:100%;box-sizing:border-box}
+#nc-isi{min-height:280px;font-family:var(--f-body);font-size:13.5px;line-height:1.5}
+.nc-tag{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--accent-soft,#e0eee8);color:var(--accent,#0f5c4a)}
+.nc-tag.warn{background:var(--warn-soft,#fbf0d9);color:var(--warn,#8a5a00)}
+.nc-sticky{position:sticky;top:76px}
+.nc-paper-wrap{background:#dfe3df;border-radius:10px;padding:22px;overflow:auto}
+.nc-page{width:210mm;min-height:297mm;box-sizing:border-box;margin:0 auto;background:#fff;color:#000;
+  padding:5mm 22.5mm 15mm 22.5mm;box-shadow:0 2px 14px rgba(0,0,0,.18);
+  font-family:Arial,"Liberation Sans",Helvetica,sans-serif;font-size:12pt;line-height:1.18;text-align:left}
+.nc-page *{box-sizing:border-box}
+.nc-kop{display:grid;grid-template-columns:20mm 1fr;align-items:center;column-gap:2mm;padding-bottom:1.5mm;border-bottom:3px solid #000;position:relative}
+.nc-kop::after{content:"";position:absolute;left:0;right:0;bottom:-5px;border-bottom:1px solid #000}
+.nc-kop img{width:18.2mm;height:auto;display:block;max-width:none}
+.nc-kop .t{text-align:center;line-height:1.15}
+.nc-kop .t1{font-size:14pt}
+.nc-kop .t3{font-size:12pt}
+.nc-kop .t4{font-family:"Times New Roman",Times,serif;font-size:11pt}
+.nc-judul{text-align:center;font-weight:700;margin:9mm 0 3mm}
+.nc-meta{width:100%;border-collapse:collapse;margin:0 0 6mm;border-bottom:1px solid #000!important}
+.nc-page table,.nc-page tbody,.nc-page tr,.nc-page td{border:0!important;background:none!important;box-shadow:none!important}
+.nc-meta td{padding:0!important;vertical-align:top;font-size:12pt!important;color:#000!important;font-family:inherit!important;height:auto!important;line-height:1.18!important}
+.nc-meta td.k{width:23mm;white-space:nowrap}
+.nc-meta td.s{width:3mm}
+.nc-meta tr:last-child td{padding-bottom:2mm!important}
+.nc-isi p{margin:0;text-align:justify;text-indent:19mm}
+.nc-isi p.lanjut{text-indent:0}
+.nc-isi .li{display:grid;grid-template-columns:6.5mm 1fr;text-align:left}
+.nc-isi .gap{height:12pt}
+.nc-ttd{margin:10mm 0 0 61%;line-height:1.25;width:max-content;max-width:100%}
+.nc-ttd .sp{height:21mm}
+.nc-rev{margin-left:6px}
+body.nc-open{overflow:hidden}
+@media print{
+  @page{size:A4;margin:0}
+  body.nc-open>*:not(#nc-modal){display:none!important}
+  body.nc-open{background:#fff!important;overflow:visible}
+  body.nc-open #nc-modal{position:static;display:block;background:none;padding:0;overflow:visible}
+  body.nc-open .nc-box{background:none;box-shadow:none;padding:0;border-radius:0;display:block;width:auto}
+  body.nc-open .nc-head,body.nc-open .nc-form{display:none!important}
+  body.nc-open .nc-grid{display:block}
+  body.nc-open .nc-sticky{position:static}
+  body.nc-open .nc-paper-wrap{background:none;padding:0;border-radius:0;overflow:visible}
+  body.nc-open .nc-page{box-shadow:none;margin:0;width:210mm;min-height:0;zoom:1!important}
+}
+</style>
+
+<div id="nc-modal" class="nc-modal" hidden role="dialog" aria-modal="true" aria-labelledby="nc-title">
+  <div class="nc-box">
+    <div class="nc-head">
+      <div><h2 id="nc-title">Nodin siap cetak</h2><div class="nc-no" id="nc-head-no"></div></div>
+      <div class="row" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+        <span id="nc-info"></span>
+        <button type="button" class="btn ghost sm" id="nc-reset">Susun ulang dari data nodin</button>
+        <button type="button" class="btn ghost" id="nc-word">Download Word</button>
+        <button type="button" class="btn" id="nc-print">Cetak</button>
+        <button type="button" class="btn ghost nc-x" id="nc-close" aria-label="Tutup">×</button>
+      </div>
+    </div>
+    <div class="nc-grid">
+      <div class="nc-form">
+        <div class="panel">
+          <h2 style="margin:0">Kepala nodin</h2>
+          <div class="fields">
+            <div class="f full"><label for="nc-yth">Yth.</label><input type="text" id="nc-yth" list="dl-kepada"></div>
+            <div class="f full"><label for="nc-dari">Dari</label><input type="text" id="nc-dari"></div>
+            <div class="f full"><label for="nc-tembusan">Tembusan</label><input type="text" id="nc-tembusan"></div>
+            <div class="f"><label for="nc-tgl">Tanggal</label><input type="text" id="nc-tgl"></div>
+            <div class="f"><label for="nc-no">Nomor</label><input type="text" id="nc-no" style="font-family:var(--f-num)"></div>
+            <div class="f"><label for="nc-sifat">Sifat</label><input type="text" id="nc-sifat"></div>
+            <div class="f"><label for="nc-lamp">Lampiran</label><input type="text" id="nc-lamp"></div>
+            <div class="f full"><label for="nc-hal">Hal</label><input type="text" id="nc-hal"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <h2 style="margin:0">Isi nodin</h2>
+          <p class="note" style="margin:0">Baris diawali "1." menjadi daftar bernomor. Baris tepat setelah daftar tidak menjorok. Baris kosong memberi jarak antarparagraf.</p>
+          <textarea id="nc-isi" aria-label="Isi nodin"></textarea>
+        </div>
+        <div class="panel">
+          <h2 style="margin:0">Penandatangan</h2>
+          <div class="fields">
+            <div class="f full"><label for="nc-sg">Pejabat</label><select id="nc-sg"></select></div>
+            <div class="f"><label for="nc-st">Status</label>
+              <select id="nc-st"><option value="">Definitif</option><option value="Plh.">Plh.</option><option value="Plt.">Plt.</option></select></div>
+            <div class="f"><label for="nc-j1">Jabatan baris 1</label><input type="text" id="nc-j1"></div>
+            <div class="f full"><label for="nc-j2">Jabatan baris 2</label><input type="text" id="nc-j2"></div>
+            <div class="f full"><label for="nc-nama">Nama</label><input type="text" id="nc-nama"></div>
+            <div class="f"><label for="nc-pangkat">Pangkat</label><input type="text" id="nc-pangkat"></div>
+            <div class="f"><label for="nc-nip">NIP</label><input type="text" id="nc-nip"></div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <button type="button" class="btn ghost sm" id="nc-sg-save">Simpan ke daftar pejabat</button>
+            <button type="button" class="btn ghost sm" id="nc-sg-del">Hapus dari daftar</button>
+          </div>
+        </div>
+      </div>
+      <div class="nc-sticky">
+        <div class="nc-paper-wrap">
+          <div class="nc-page" id="nc-page">
+            <div class="nc-kop">
+              <img id="nc-logo" alt="Logo Provinsi Jawa Timur" src="data:image/png;base64,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">
+              <div class="t">
+                <div class="t1">PEMERINTAH PROVINSI JAWA TIMUR</div>
+                <div class="t1">SEKRETARIAT DEWAN PERWAKILAN RAKYAT DAERAH</div>
+                <div class="t3">Jalan Indrapura No.1, Krembangan Selatan, Surabaya, Jawa Timur 60175</div>
+                <div class="t4">Telepon (031) 3531126 s/d 29 Laman datacenter.dprd.jatimprov.go.id</div>
+              </div>
+            </div>
+            <div class="nc-judul">NOTA – DINAS</div>
+            <table class="nc-meta"><tbody id="nc-meta"></tbody></table>
+            <div class="nc-isi" id="nc-isi-out"></div>
+            <div class="nc-ttd" id="nc-ttd"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="nc-script">
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  var BULAN = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+  var PRESET = [
+    {id:"kabag-pk", j1:"Kepala Bagian", j2:"Program dan Keuangan", nama:"Sri Nurwidayati, SH, MH", pangkat:"Pembina Tingkat I", nip:"19720129 199803 2 005"},
+    {id:"kabag-fpp", j1:"Kepala Bagian", j2:"Fasilitasi Penganggaran dan Pengawasan", nama:"Linda Roosanti, S.Sos, M.Si", pangkat:"Pembina Tingkat I", nip:"19740410 199302 2 002"}
+  ];
+  var DEFAULT_SG = "kabag-pk";
+  var K_DRAFT = "nc_draft_v1", K_SG = "nc_pejabat_v1";
+  var FIELDS = ["yth","dari","tembusan","tgl","no","sifat","lamp","hal","isi","st","j1","j2","nama","pangkat","nip"];
+  var cur = null, ttdPct = 61;
+
+  function lsGet(k, d){ try{ var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } }
+  function lsSet(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+  function signers(){ return PRESET.concat(lsGet(K_SG, [])); }
+  function fmtTgl(iso){ var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso||""); return m ? (+m[3])+" "+BULAN[+m[2]-1]+" "+m[1] : (iso||""); }
+  function fmtRange(a, b){
+    var x = /^(\d{4})-(\d{2})-(\d{2})/.exec(a||""), y = /^(\d{4})-(\d{2})-(\d{2})/.exec(b||"");
+    if(!x) return ""; if(!y || a===b) return fmtTgl(a);
+    if(x[1]===y[1] && x[2]===y[2]) return (+x[3])+"-"+(+y[3])+" "+BULAN[+x[2]-1]+" "+x[1];
+    if(x[1]===y[1]) return (+x[3])+" "+BULAN[+x[2]-1]+" s.d. "+(+y[3])+" "+BULAN[+y[2]-1]+" "+x[1];
+    return fmtTgl(a)+" s.d. "+fmtTgl(b);
+  }
+  function subDot(s){ s = String(s||"").replace(/\D/g,""); return s.length===12 ? s[0]+"."+s.slice(1,3)+"."+s.slice(3,5)+"."+s[5]+"."+s.slice(6,8)+"."+s.slice(8) : s; }
+  function rekKode(r){ return String(r||"").trim().split(/\s+/)[0] || ""; }
+  function rp(n){ return "Rp"+Math.round(n||0).toLocaleString("id-ID"); }
+  function terbilang(n){
+    var s = ["","satu","dua","tiga","empat","lima","enam","tujuh","delapan","sembilan","sepuluh","sebelas"];
+    n = Math.floor(Math.abs(n||0));
+    if(n<12) return s[n];
+    if(n<20) return terbilang(n-10)+" belas";
+    if(n<100) return terbilang(Math.floor(n/10))+" puluh"+(n%10?" "+terbilang(n%10):"");
+    if(n<200) return "seratus"+(n-100?" "+terbilang(n-100):"");
+    if(n<1000) return terbilang(Math.floor(n/100))+" ratus"+(n%100?" "+terbilang(n%100):"");
+    if(n<2000) return "seribu"+(n-1000?" "+terbilang(n-1000):"");
+    var u = [[1e12," triliun"],[1e9," miliar"],[1e6," juta"],[1e3," ribu"]];
+    for(var i=0;i<u.length;i++){ if(n>=u[i][0]){ var q=Math.floor(n/u[i][0]), r=n%u[i][0]; return terbilang(q)+u[i][1]+(r?" "+terbilang(r):""); } }
+    return "";
+  }
+  function cap(t){ t = String(t||"").trim(); return t ? t[0].toUpperCase()+t.slice(1) : t; }
+  function low1(t){ t = String(t||"").trim(); return /^[A-Z][a-z]/.test(t) ? t[0].toLowerCase()+t.slice(1) : t; }
+  function norm(t){ return String(t||"").toUpperCase().replace(/[^A-Z0-9]/g,""); }
+
+  // Pecah daftar pelaksana; gelar setelah koma digabung lagi ke nama, lalu dicocokkan ke daftar pegawai.
+  function pelaksana(str){
+    var raw = String(str||"").split(/\s*[,;\n]\s*/).filter(Boolean), out = [];
+    var gelar = /^(S\.?[A-Za-z]{0,4}\.?|M\.?[A-Za-z]{0,4}\.?|A\.?Md\.?[A-Za-z.]*|Dr\.?|Ir\.?|SE|SH|MH|MM|SP|SM|ST|SS|SAk|S\.Ak\.?|M\.Si\.?|MBA|Ph\.?D\.?|CA)\.?$/;
+    raw.forEach(function(t){ if(out.length && gelar.test(t) && t.indexOf(" ")<0) out[out.length-1] += ", "+t; else out.push(t); });
+    var peg = (typeof PEG!=="undefined" && PEG) ? PEG.map(function(p){ return p[0]; }) : [];
+    return out.map(function(n){
+      var k = norm(n); if(!k) return n;
+      for(var i=0;i<peg.length;i++){ var pk = norm(peg[i]); if(pk===k || pk.indexOf(k)===0) return peg[i]; }
+      return n;
+    });
+  }
+  function sapaan(e){ return /program dan keuangan/i.test((e&&e.kepada)||"") && /kepala bagian/i.test((e&&e.kepada)||"") ? "Ibu" : "Bapak"; }
+
+  function draftIsi(e, sg){
+    var sub = subDot(e.subkeg), rek = rekKode(e.rek), sp = sapaan(e);
+    var beban = (sub||rek) ? "dengan anggaran yang dibebankan pada program/kegiatan "+(sub||"...")+" kode rekening "+(rek||"...")+"." : "";
+    var unit = String((sg&&sg.j2)||"Program dan Keuangan").replace(/^Bagian\s+/i,"");
+    var ur = low1(e.uraian||""), L = [];
+    if(e.belanja==="sppd" || (e.idx==="000.1.2.3" && e.pelaksana)){
+      var ps = pelaksana(e.pelaksana), tg = fmtRange(e.mulai, e.akhir), lok = String(e.lokasi||"").trim();
+      L.push("Sehubungan dengan adanya kegiatan "+ur.replace(/^kegiatan\s+/i,"")+", dengan ini mohon izin Staf Bagian "+unit+" melaksanakan kegiatan dimaksud"+(tg?" pada tanggal "+tg:"")+(lok?" ke "+lok:"")+". Adapun staf yang ditugaskan yaitu :");
+      if(!ps.length){ var no = /×\s*(\d+)\s*orang/.exec(((e.rincian||[])[0]||{}).uraian||""); for(var j=0;j<(no?+no[1]:1);j++) ps.push("..."); }
+      ps.forEach(function(p,i){ L.push((i+1)+". "+p); });
+      L.push("dan kepada yang bersangkutan diberikan bantuan biaya perjalanan dinas "+(beban||"dengan anggaran yang dibebankan pada program/kegiatan ... kode rekening ..."));
+    } else if(e.nilai){
+      var rc = Array.isArray(e.rincian) ? e.rincian : [];
+      L.push("Sehubungan dengan "+ur+", dengan ini kami mohon perkenan "+sp+" untuk memberikan persetujuan atas kebutuhan anggaran sebesar "+rp(e.nilai)+" ("+terbilang(e.nilai)+" rupiah)"+(rc.length?" dengan rincian sebagai berikut :":(beban?" "+beban:".")));
+      rc.forEach(function(r,i){ L.push((i+1)+". "+(r.komponen||"")+(r.uraian?" ("+r.uraian+")":"")+" sebesar "+rp(r.nilai)); });
+      if(rc.length && beban) L.push(beban);
+    } else {
+      L.push("Sehubungan dengan "+ur+", dengan ini kami mohon perkenan "+sp+" untuk dapat menyetujui pelaksanaan kegiatan dimaksud"+(beban?" "+beban:"."));
+    }
+    L.push("");
+    L.push("Demikian atas perkenan dan bantuan "+sp+" disampaikan terima kasih.");
+    return L.join("\n");
+  }
+  function halDefault(e){ return (e.belanja==="sppd" || (e.idx==="000.1.2.3" && e.pelaksana)) ? "Bantuan Biaya Perjalanan Dinas" : cap(e.uraian); }
+  function dariOf(v){ return ((v.st?v.st+" ":"")+[v.j1,v.j2].filter(Boolean).join(" ")).trim(); }
+
+  function fresh(e){
+    var sg = signers().filter(function(s){ return s.id===DEFAULT_SG; })[0];
+    var v = {yth:e.kepada||"Sekretaris DPRD Provinsi Jawa Timur", tembusan:"-", tgl:fmtTgl(e.tgl), no:e.no||"", sifat:"Biasa", lamp:"-",
+      hal:halDefault(e), st:"", sg:sg.id, j1:sg.j1, j2:sg.j2, nama:sg.nama, pangkat:sg.pangkat, nip:sg.nip};
+    v.dari = dariOf(v); v.isi = draftIsi(e, sg); return v;
+  }
+  function readForm(){ var v = {sg:$("nc-sg").value}; FIELDS.forEach(function(f){ v[f] = $("nc-"+f).value; }); return v; }
+  function writeForm(v){ FIELDS.forEach(function(f){ $("nc-"+f).value = v[f]==null ? "" : v[f]; }); fillSg(v.sg); }
+  function save(){ if(!cur) return; var all = lsGet(K_DRAFT, {}), v = readForm(); v._at = new Date().toISOString(); all[cur.no] = v; lsSet(K_DRAFT, all); tag(true, v._at); }
+
+  function fillSg(sel){
+    var s = $("nc-sg"), ss = signers();
+    s.innerHTML = "";
+    ss.forEach(function(x){ var o = document.createElement("option"); o.value = x.id;
+      o.textContent = x.j1+" "+x.j2+" — "+x.nama+(x.id===DEFAULT_SG?" (default)":""); s.appendChild(o); });
+    var o = document.createElement("option"); o.value = "lain"; o.textContent = "Lainnya (isi manual)"; s.appendChild(o);
+    s.value = ss.some(function(x){ return x.id===sel; }) ? sel : "lain";
+  }
+
+  function el(tag, cls, txt){ var d = document.createElement(tag); if(cls) d.className = cls; if(txt!=null) d.textContent = txt; return d; }
+  // Pecah isi menjadi blok: paragraf (menjorok / lanjutan), butir daftar, dan jarak.
+  function blocks(isi){
+    var out = [], prevLi = false;
+    String(isi||"").split("\n").forEach(function(line){
+      var t = line.replace(/\s+$/,"");
+      if(!t.trim()){ out.push({k:"gap"}); prevLi = false; return; }
+      var li = /^\s*(\d+[.)])\s+(.*)$/.exec(t);
+      if(li){ out.push({k:"li", n:li[1], t:li[2]}); prevLi = true; return; }
+      out.push({k: prevLi ? "lanjut" : "p", t:t.trim()}); prevLi = false;
+    });
+    return out;
+  }
+  function metaRows(v){ return [["Yth.",v.yth],["Dari",v.dari],["Tembusan",v.tembusan],["Tanggal",v.tgl],["Nomor",v.no],["Sifat",v.sifat],["Lampiran",v.lamp],["Hal",v.hal]]; }
+  function ttdLines(v){ var L = [((v.st?v.st+" ":"")+v.j1).trim()]; if(v.j2) L.push(v.j2); L.push(null); L.push(v.nama); if(v.pangkat) L.push(v.pangkat); if(v.nip) L.push("NIP. "+v.nip); return L; }
+
+  function render(){
+    var v = readForm(), m = $("nc-meta"); m.innerHTML = "";
+    metaRows(v).forEach(function(r){
+      var tr = document.createElement("tr"); tr.appendChild(el("td","k",r[0])); tr.appendChild(el("td","s",":")); tr.appendChild(el("td","v",r[1]||"")); m.appendChild(tr);
+    });
+    var o = $("nc-isi-out"); o.innerHTML = "";
+    blocks(v.isi).forEach(function(b){
+      if(b.k==="gap") o.appendChild(el("div","gap"));
+      else if(b.k==="li"){ var d = el("div","li"); d.appendChild(el("span","",b.n)); d.appendChild(el("span","",b.t)); o.appendChild(d); }
+      else o.appendChild(el("p", b.k==="lanjut" ? "lanjut" : "", b.t));
+    });
+    var g = $("nc-ttd"); g.innerHTML = "";
+    ttdLines(v).forEach(function(t){ g.appendChild(t===null ? el("div","sp") : el("div","",t)); });
+    // Blok tanda tangan mulai di 61% lebar; jika jabatan panjang, digeser ke kiri agar tetap muat.
+    g.style.marginLeft = "61%";
+    var W = g.parentNode.clientWidth - 2*parseFloat(getComputedStyle(g.parentNode).paddingLeft||0), w = g.offsetWidth;
+    if(W>0 && w>0){ ttdPct = Math.max(0, Math.min(61, (W-w)/W*100)); g.style.marginLeft = ttdPct.toFixed(2)+"%"; }
+  }
+  function fit(){ var p = $("nc-page"); if(!p || !p.parentNode.clientWidth) return; p.style.zoom = Math.min(1, (p.parentNode.clientWidth-44)/794).toFixed(3); }
+
+  function entriesSafe(){ try{ return (typeof entries==="function" ? entries() : []) || []; }catch(e){ return []; } }
+  function findEntry(no){ return entriesSafe().filter(function(e){ return e && e.no===no; })[0]; }
+  function tag(saved, at){
+    var i = $("nc-info"); i.innerHTML = "";
+    i.appendChild(el("span","nc-tag", saved ? "Revisi tersimpan"+(at?" · "+new Date(at).toLocaleString("id-ID",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"") : "Disusun dari data nodin"));
+    if(cur && cur.status && cur.status!=="aktif"){ i.appendChild(document.createTextNode(" ")); i.appendChild(el("span","nc-tag warn","Status: "+cur.status)); }
+  }
+
+  function open(no){
+    var e = findEntry(no); if(!e){ msg("Data nodin "+no+" belum terbaca, coba lagi sebentar."); return; }
+    cur = e;
+    var d = lsGet(K_DRAFT, {})[no];
+    writeForm(d || fresh(e));
+    $("nc-head-no").textContent = e.no+" · "+String(e.uraian||"").slice(0,90);
+    $("nc-modal").hidden = false; document.body.classList.add("nc-open");
+    fit(); render(); tag(!!d, d && d._at);
+    $("nc-close").focus();
+  }
+  function close(){ $("nc-modal").hidden = true; document.body.classList.remove("nc-open"); }
+
+  // ---------- Download Word (.docx dibangun langsung di browser) ----------
+  function xe(t){ return String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+  function run(t, o){ o = o||{}; var rp = (o.b?"<w:b/>":"")+(o.font?'<w:rFonts w:ascii="'+o.font+'" w:hAnsi="'+o.font+'" w:cs="'+o.font+'"/>':"")+(o.sz?'<w:sz w:val="'+o.sz+'"/><w:szCs w:val="'+o.sz+'"/>':"");
+    return "<w:r>"+(rp?"<w:rPr>"+rp+"</w:rPr>":"")+(o.tab?"<w:tab/>":"")+'<w:t xml:space="preserve">'+xe(t)+"</w:t></w:r>"; }
+  function para(inner, o){ o = o||{}; var pp = "";
+    if(o.bdr) pp += "<w:pBdr><w:bottom w:val=\""+o.bdr+"\" w:sz=\""+(o.bsz||8)+"\" w:space=\"1\" w:color=\"000000\"/></w:pBdr>";
+    if(o.before!=null || o.after!=null) pp += '<w:spacing w:before="'+(o.before||0)+'" w:after="'+(o.after||0)+'"/>';
+    if(o.ind) pp += "<w:ind"+(o.ind.left!=null?' w:left="'+o.ind.left+'"':"")+(o.ind.firstLine!=null?' w:firstLine="'+o.ind.firstLine+'"':"")+(o.ind.hanging!=null?' w:hanging="'+o.ind.hanging+'"':"")+"/>";
+    if(o.jc) pp += '<w:jc w:val="'+o.jc+'"/>';
+    if(o.rsz) pp += '<w:rPr><w:sz w:val="'+o.rsz+'"/><w:szCs w:val="'+o.rsz+'"/></w:rPr>';
+    return "<w:p>"+(pp?"<w:pPr>"+pp+"</w:pPr>":"")+(inner||"")+"</w:p>"; }
+  function cell(w, inner, va){ return '<w:tc><w:tcPr><w:tcW w:w="'+w+'" w:type="dxa"/>'+(va?'<w:vAlign w:val="'+va+'"/>':"")+"</w:tcPr>"+inner+"</w:tc>"; }
+  function table(cols, rows){ var g = cols.map(function(c){ return '<w:gridCol w:w="'+c+'"/>'; }).join("");
+    return '<w:tbl><w:tblPr><w:tblW w:w="'+cols.reduce(function(a,b){return a+b;},0)+'" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>'+g+"</w:tblGrid>"+rows.join("")+"</w:tbl>"; }
+  function docxXml(v, logoW, logoH){
+    var CW = 9356, emuW = 655200, emuH = Math.round(emuW*logoH/logoW);
+    var pic = '<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="'+emuW+'" cy="'+emuH+'"/><wp:docPr id="1" name="Logo Jawa Timur"/><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="1" name="logo.png"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdLogo"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="'+emuW+'" cy="'+emuH+'"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>';
+    var B = [];
+    B.push(table([1180, CW-1180], ["<w:tr>"+cell(1180, para(pic), "center")+cell(CW-1180,
+      para(run("PEMERINTAH PROVINSI JAWA TIMUR",{sz:28}),{jc:"center"})+
+      para(run("SEKRETARIAT DEWAN PERWAKILAN RAKYAT DAERAH",{sz:28}),{jc:"center"})+
+      para(run("Jalan Indrapura No.1, Krembangan Selatan, Surabaya, Jawa Timur 60175",{sz:24}),{jc:"center"})+
+      para(run("Telepon (031) 3531126 s/d 29 Laman datacenter.dprd.jatimprov.go.id",{sz:22,font:"Times New Roman"}),{jc:"center"}), "center")+"</w:tr>"]));
+    B.push(para("", {bdr:"thickThinSmallGap", bsz:24, rsz:8}));
+    B.push(para(run("NOTA – DINAS",{b:true}), {jc:"center", before:480, after:160}));
+    B.push(table([1304, 170, CW-1474], metaRows(v).map(function(r){
+      return "<w:tr>"+cell(1304, para(run(r[0])))+cell(170, para(run(":")))+cell(CW-1474, para(run(r[1]||"")))+"</w:tr>"; })));
+    B.push(para("", {bdr:"single", bsz:8, rsz:8}));
+    B.push(para(""));
+    blocks(v.isi).forEach(function(b){
+      if(b.k==="gap") B.push(para(""));
+      else if(b.k==="li") B.push(para(run(b.n)+run(b.t,{tab:true}), {ind:{left:369, hanging:369}}));
+      else B.push(para(run(b.t), {jc:"both", ind: b.k==="lanjut" ? null : {firstLine:1077}}));
+    });
+    var left = Math.round(CW*ttdPct/100), first = true;
+    ttdLines(v).forEach(function(t){
+      if(t===null){ for(var i=0;i<4;i++) B.push(para("", {ind:{left:left}})); return; }
+      B.push(para(run(t), {ind:{left:left}, before: first ? 567 : null})); first = false;
+    });
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><w:body>'+B.join("")+'<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="284" w:right="1274" w:bottom="567" w:left="1276" w:header="0" w:footer="0" w:gutter="0"/></w:sectPr></w:body></w:document>';
+  }
+  var CRC = (function(){ var t = [], c, n, k; for(n=0;n<256;n++){ c=n; for(k=0;k<8;k++) c = c&1 ? 0xEDB88320^(c>>>1) : c>>>1; t[n]=c>>>0; } return t; })();
+  function crc32(u){ var c = 0xFFFFFFFF; for(var i=0;i<u.length;i++) c = CRC[(c^u[i])&255]^(c>>>8); return (c^0xFFFFFFFF)>>>0; }
+  function zip(files){ // files: [{name, data:Uint8Array}] — disimpan tanpa kompresi
+    var enc = new TextEncoder(), parts = [], cd = [], off = 0;
+    function h(n, len){ var a = new Uint8Array(len), dv = new DataView(a.buffer); return {a:a, dv:dv}; }
+    files.forEach(function(f){
+      var nm = enc.encode(f.name), crc = crc32(f.data), L = h(0, 30);
+      L.dv.setUint32(0,0x04034b50,true); L.dv.setUint16(4,20,true); L.dv.setUint16(6,0x0800,true); L.dv.setUint16(8,0,true);
+      L.dv.setUint16(10,0,true); L.dv.setUint16(12,0x21,true); L.dv.setUint32(14,crc,true); L.dv.setUint32(18,f.data.length,true); L.dv.setUint32(22,f.data.length,true);
+      L.dv.setUint16(26,nm.length,true); L.dv.setUint16(28,0,true);
+      parts.push(L.a, nm, f.data);
+      var C = h(0, 46);
+      C.dv.setUint32(0,0x02014b50,true); C.dv.setUint16(4,20,true); C.dv.setUint16(6,20,true); C.dv.setUint16(8,0x0800,true); C.dv.setUint16(10,0,true);
+      C.dv.setUint16(12,0,true); C.dv.setUint16(14,0x21,true); C.dv.setUint32(16,crc,true); C.dv.setUint32(20,f.data.length,true); C.dv.setUint32(24,f.data.length,true);
+      C.dv.setUint16(28,nm.length,true); C.dv.setUint32(42,off,true);
+      cd.push(C.a, nm); off += 30+nm.length+f.data.length;
+    });
+    var cdLen = cd.reduce(function(a,b){ return a+b.length; },0), E = h(0, 22);
+    E.dv.setUint32(0,0x06054b50,true); E.dv.setUint16(8,files.length,true); E.dv.setUint16(10,files.length,true); E.dv.setUint32(12,cdLen,true); E.dv.setUint32(16,off,true);
+    return new Blob(parts.concat(cd, [E.a]), {type:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
+  }
+  function buildDocx(){
+    var v = readForm(), img = $("nc-logo"), enc = new TextEncoder();
+    var b64 = img.src.split(",")[1], bin = atob(b64), png = new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++) png[i] = bin.charCodeAt(i);
+    var W = "http://schemas.openxmlformats.org/";
+    var files = [
+      {name:"[Content_Types].xml", data:enc.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="'+W+'package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>')},
+      {name:"_rels/.rels", data:enc.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="'+W+'package/2006/relationships"><Relationship Id="rId1" Type="'+W+'officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>')},
+      {name:"word/_rels/document.xml.rels", data:enc.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="'+W+'package/2006/relationships"><Relationship Id="rIdStyles" Type="'+W+'officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rIdLogo" Type="'+W+'officeDocument/2006/relationships/image" Target="media/logo.png"/></Relationships>')},
+      {name:"word/styles.xml", data:enc.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="'+W+'wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial" w:eastAsia="Arial"/><w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="id-ID"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style><w:style w:type="table" w:default="1" w:styleId="TableNormal"><w:name w:val="Normal Table"/><w:tblPr><w:tblInd w:w="0" w:type="dxa"/><w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="0" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/></w:tblCellMar></w:tblPr></w:style></w:styles>')},
+      {name:"word/document.xml", data:enc.encode(docxXml(v, img.naturalWidth||220, img.naturalHeight||310))},
+      {name:"word/media/logo.png", data:png}
+    ];
+    return zip(files);
+  }
+  function downloadWord(){
+    if(!cur) return;
+    var blob = buildDocx(), a = document.createElement("a"), v = readForm();
+    a.href = URL.createObjectURL(blob);
+    a.download = "Nodin "+String(v.no||cur.no).replace(/[\/\\:*?"<>|]+/g,"-")+".docx";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
+  }
+
+  // ---------- Tombol Revisi di Arsip ----------
+  var RE_NO = /\d{3}(?:\.\d+)*\/\d+(?:\.\d+)?\/050\.3\/\d{4}(?!\d)/;
+  function addRevisi(){
+    var tb = $("ar-rows"); if(!tb) return;
+    Array.prototype.forEach.call(tb.querySelectorAll("tr"), function(tr){
+      if(tr.querySelector(".nc-rev") || !tr.cells.length) return;
+      var m = RE_NO.exec((tr.cells[0].textContent||"")); if(!m) return;
+      var b = el("button","btn sm ghost nc-rev","Revisi"); b.type = "button"; b.dataset.no = m[0];
+      b.title = "Revisi dan cetak nodin "+m[0];
+      tr.cells[tr.cells.length-1].appendChild(b);
+    });
+  }
+
+  // ---------- Pop up otomatis setelah Ambil nomor ----------
+  var watch = null;
+  function afterAmbil(){
+    var before = {}; entriesSafe().forEach(function(e){ before[e.no] = 1; });
+    var t0 = Date.now(); clearInterval(watch);
+    watch = setInterval(function(){
+      var baru = entriesSafe().filter(function(e){ return e && e.no && !before[e.no]; });
+      if(baru.length){ clearInterval(watch); baru.sort(function(a,b){ return String(b.at||"").localeCompare(String(a.at||"")) || (b.seq-a.seq); }); open(baru[0].no); }
+      else if(Date.now()-t0 > 30000) clearInterval(watch);
+    }, 400);
+  }
+
+  function init(){
+    fillSg(DEFAULT_SG);
+    FIELDS.forEach(function(f){ $("nc-"+f).addEventListener("input", function(){
+      if(["j1","j2"].indexOf(f)>=0) $("nc-dari").value = dariOf(readForm());
+      render(); save(); }); });
+    $("nc-st").addEventListener("change", function(){ $("nc-dari").value = dariOf(readForm()); render(); save(); });
+    $("nc-sg").addEventListener("change", function(){
+      var x = signers().filter(function(s){ return s.id===$("nc-sg").value; })[0];
+      if(x){ $("nc-j1").value = x.j1; $("nc-j2").value = x.j2; $("nc-nama").value = x.nama; $("nc-pangkat").value = x.pangkat; $("nc-nip").value = x.nip; }
+      else { $("nc-nama").focus(); }
+      $("nc-dari").value = dariOf(readForm()); render(); save();
+    });
+    $("nc-sg-save").addEventListener("click", function(){
+      var v = readForm(); if(!v.nama.trim()){ $("nc-nama").focus(); return; }
+      var cs = lsGet(K_SG, []), id = "u-"+norm(v.nama).toLowerCase();
+      if(PRESET.some(function(p){ return norm(p.nama)===norm(v.nama); })){ msg("Pejabat ini sudah ada di daftar."); return; }
+      cs = cs.filter(function(c){ return c.id!==id; }); cs.push({id:id, j1:v.j1, j2:v.j2, nama:v.nama, pangkat:v.pangkat, nip:v.nip});
+      lsSet(K_SG, cs); fillSg(id); save(); msg("Pejabat disimpan ke daftar.");
+    });
+    $("nc-sg-del").addEventListener("click", function(){
+      var id = $("nc-sg").value; if(!/^u-/.test(id)){ msg("Pejabat bawaan tidak bisa dihapus."); return; }
+      lsSet(K_SG, lsGet(K_SG, []).filter(function(c){ return c.id!==id; })); fillSg(DEFAULT_SG); $("nc-sg").dispatchEvent(new Event("change"));
+    });
+    $("nc-reset").addEventListener("click", function(){
+      if(!cur) return; var all = lsGet(K_DRAFT, {}); delete all[cur.no]; lsSet(K_DRAFT, all); open(cur.no); msg("Isi disusun ulang dari data nodin.");
+    });
+    $("nc-print").addEventListener("click", function(){ if(!cur) return; $("nc-page").style.zoom = 1; render(); window.print(); });
+    $("nc-word").addEventListener("click", downloadWord);
+    $("nc-close").addEventListener("click", close);
+    $("nc-modal").addEventListener("click", function(ev){ if(ev.target===this) close(); });
+    document.addEventListener("keydown", function(ev){ if(ev.key==="Escape" && !$("nc-modal").hidden) close(); });
+    window.addEventListener("resize", function(){ if(!$("nc-modal").hidden){ fit(); render(); } });
+    window.addEventListener("afterprint", function(){ if(!$("nc-modal").hidden){ fit(); render(); } });
+    document.addEventListener("click", function(ev){
+      var r = ev.target.closest && ev.target.closest(".nc-rev"); if(r){ ev.preventDefault(); open(r.dataset.no); return; }
+      var g = ev.target.closest && ev.target.closest("#go"); if(g && !g.disabled) afterAmbil();
+    }, true);
+    var tb = $("ar-rows"); if(tb){ new MutationObserver(addRevisi).observe(tb, {childList:true}); addRevisi(); }
+    window.ncBukaNodin = open;
+  }
+  function msg(t){ try{ if(typeof toast==="function") return toast(t); }catch(e){} }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", init); else init();
+})();
+</script>
+<!-- ===== AKHIR MODUL NODIN SIAP CETAK ===== -->
+
 </body>
 </html>
