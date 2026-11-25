@@ -415,7 +415,7 @@ const SUBKEG=[
  ['402011020008','Penyusunan Pelaporan dan Analisis Prognosis Realisasi Anggaran']];
 const REK={sppd:'5.1.02.04.01.0001 Belanja Perjalanan Dinas Biasa',hon:'5.1.02.02.01.0003 Honorarium Narasumber atau Pembahas, Moderator, Pembawa Acara, dan Panitia',
  ta:'5.1.02.02.01.0029 Belanja Jasa Tenaga Ahli',ctk:'5.1.02.01.01.0025 Belanja Alat/Bahan untuk Kegiatan Kantor-Kertas dan Cover',oth:''};
-const REKLIST=[REK.sppd,'5.1.02.04.01.0005 Belanja Perjalanan Dinas Paket Meeting Luar Kota',REK.hon,'5.1.02.02.01.0016 Belanja Jasa Tenaga Penanganan Prasarana dan Sarana Umum',REK.ta,REK.ctk,'5.1.02.01.01.0027 Belanja Alat/Bahan untuk Kegiatan Kantor-Benda Pos','5.1.02.01.01.0052 Belanja Makanan dan Minuman Rapat','5.1.02.02.12.0001 Belanja Kursus Singkat/Pelatihan'];
+const REKLIST=[REK.sppd,'5.1.02.04.01.0005 Belanja Perjalanan Dinas Paket Meeting Luar Kota',REK.hon,'5.1.02.02.01.0016 Belanja Jasa Tenaga Penanganan Prasarana dan Sarana Umum',REK.ta,REK.ctk,'5.1.02.01.01.0027 Belanja Alat/Bahan untuk Kegiatan Kantor-Benda Pos','5.1.02.01.01.0052 Belanja Makanan dan Minuman Rapat','5.1.02.02.12.0001 Belanja Kursus Singkat/Pelatihan','5.1.02.02.01.0080 Belanja Honorarium Penanggungjawaban Pengelola Keuangan'];
 // Jarak sekali jalan dari Surabaya (tabel jarak antar kab/kota) dan estimasi tol Gol. I sekali jalan
 const KOTA=[['Kota Surabaya',0,0],['Kabupaten Sidoarjo',23,9000],['Kabupaten Gresik',18,8000],['Kabupaten Lamongan',45,15000],['Kabupaten Bangkalan',28,0],['Kabupaten Sampang',90,0],['Kabupaten Pamekasan',123,0],['Kabupaten Sumenep',175,0],
  ['Kabupaten Mojokerto',49,22000],['Kota Mojokerto',49,22000],['Kabupaten Jombang',79,55000],['Kabupaten Pasuruan',60,36000],['Kota Pasuruan',60,36000],['Kabupaten Probolinggo',99,60000],['Kota Probolinggo',99,60000],
@@ -1057,6 +1057,19 @@ body.nc-open{overflow:hidden}
   body.nc-open .nc-paper-wrap{background:none;padding:0;border-radius:0;overflow:visible}
   body.nc-open .nc-page{box-shadow:none;margin:0;width:210mm;min-height:0;zoom:1!important}
 }
+
+/* === Perbaikan 25 Nov 2026 === */
+/* Garis tipis hitam di bawah blok Yth.–Hal pada nodin */
+.nc-page table.nc-meta{ border-bottom:1px solid #000 !important; }
+/* Kolom aksi Arsip (Batalkan/Revisi/Cetak) selalu terlihat di kanan */
+table.arsip tr>th:last-child,
+table.arsip tr>td:last-child{
+  position:sticky; right:0; background:#fff; z-index:2;
+  box-shadow:-6px 0 8px -6px rgba(0,0,0,.18); white-space:nowrap;
+}
+table.arsip td:last-child .btn{display:block; width:100%; margin:2px 0}
+/* Nodin batal disembunyikan, kecuali filter status = "Batal / kosong" */
+body:not(:has(#fs option[value="batal"]:checked)) #ar-rows tr.batal{display:none}
 </style>
 
 <div id="nc-modal" class="nc-modal" hidden role="dialog" aria-modal="true" aria-labelledby="nc-title">
@@ -1451,6 +1464,39 @@ body.nc-open{overflow:hidden}
 })();
 </script>
 <!-- ===== AKHIR MODUL NODIN SIAP CETAK ===== -->
+
+<script>
+/* Tombol Cetak di bawah tombol Revisi pada tab Arsip */
+(function(){
+  function addCetak(){
+    document.querySelectorAll('#ar-rows .nc-rev').forEach(function(r){
+      var n = r.nextElementSibling;
+      if (n && n.classList.contains('nc-cetak')) return;
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn sm nc-cetak';
+      b.textContent = 'Cetak';
+      b.dataset.no = r.dataset.no;
+      b.title = 'Cetak nodin ' + r.dataset.no;
+      r.after(b);
+    });
+  }
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('.nc-cetak');
+    if (!b) return;
+    e.preventDefault();
+    var rev = b.previousElementSibling;
+    if (!rev || !rev.classList.contains('nc-rev')) return;
+    rev.click();
+    setTimeout(function(){
+      var p = document.getElementById('nc-print');
+      if (p) p.click();
+    }, 300);
+  });
+  new MutationObserver(addCetak).observe(document.body, {childList:true, subtree:true});
+  addCetak();
+})();
+</script>
 
 </body>
 </html>
